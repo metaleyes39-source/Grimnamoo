@@ -42,7 +42,7 @@
     .form-ctrl { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); font-size: 14px; background: #FFF; color: var(--text); outline: none; margin-bottom: 10px; }
     .search-box { width: 100%; padding: 9px 12px; border-radius: 10px; border: 1.5px solid var(--primary-light); background: #F8FAFC; font-size: 13px; margin-bottom: 8px; outline: none; }
     .search-box:focus { border-color: var(--primary); background: #FFF; }
-    .btn-more { width: 100%; background: #F1F5F9; color: var(--muted); border: 1px solid var(--border); padding: 8px; border-radius: 10px; font-size: 12px; font-weight: 700; cursor: pointer; margin-top: 4px; text-align: center; }
+    .btn-more { width: 100%; background: #F1F5F9; color: var(--muted); border: 1px solid var(--border); padding: 8px; border-radius: 10px; font-size: 12px; font-weight: 700; cursor: pointer; margin-top: -4px; margin-bottom: 12px; text-align: center; }
     .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #FFF; border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 8px 0 12px 0; z-index: 100; max-width: 480px; margin: 0 auto; }
     .nav-btn { display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: none; color: var(--muted); font-size: 11px; font-weight: 700; cursor: pointer; flex: 1; }
     .nav-btn.active { color: var(--primary); }
@@ -103,8 +103,9 @@
     <!-- Growth Observation -->
     <div class="section-head"><div class="section-title">🎨 성장 관찰 메모</div><button class="btn-add" onclick="openGrowthModal()">+ 메모 추가</button></div>
     <div id="growthList"></div>
+    <button type="button" class="btn-more" id="btnToggleGrowth" style="display:none;" onclick="toggleGrowthExpand()"></button>
 
-    <!-- Attendance / Lessons (Expand/Collapse) -->
+    <!-- Attendance / Lessons -->
     <div class="section-head">
       <div class="section-title">📖 수업 참여 이력 (출석연동)</div>
     </div>
@@ -114,6 +115,7 @@
     <!-- Counseling -->
     <div class="section-head"><div class="section-title">📞 학부모 상담 및 조치</div><button class="btn-add" onclick="openCounselModal()">+ 상담 추가</button></div>
     <div id="counselList"></div>
+    <button type="button" class="btn-more" id="btnToggleCounsel" style="display:none;" onclick="toggleCounselExpand()"></button>
   </div>
 
   <!-- TAB 2: 수업일지 -->
@@ -121,6 +123,7 @@
     <div class="section-head"><div class="section-title">📖 반별 수업일지 대장</div><button class="btn-add dark" onclick="openJournalModal()">+ 새 수업일지 작성</button></div>
     <p style="font-size:12px; color:var(--muted); margin-bottom:12px;">💡 수업일지 작성 시 출석한 원생들을 체크하면 학생별 성장차트에 자동 연동됩니다.</p>
     <div id="journalList"></div>
+    <button type="button" class="btn-more" id="btnToggleJournal" style="display:none;" onclick="toggleJournalExpand()"></button>
   </div>
 
   <!-- TAB 3: 월간 피드백 -->
@@ -263,7 +266,7 @@
 </div>
 
 <script>
-  const DB_KEY = 'GRIMNAMU_DB_V10';
+  const DB_KEY = 'GRIMNAMU_DB_V11';
   const defaultDB = {
     classes: [
       { id: 'c1', name: '그림반', teacher: '당영혜 T', subTeacher: '최승아 T', desc: '초등 미술' },
@@ -286,7 +289,12 @@
 
   let DB = loadDB();
   let currentStudentId = DB.students[0] ? DB.students[0].id : '';
-  let isAttendanceExpanded = false;
+
+  // Expand states for each section
+  let expGrowth = false;
+  let expAttendance = false;
+  let expCounsel = false;
+  let expJournal = false;
 
   function loadDB() { try { const s = localStorage.getItem(DB_KEY); if (s) return JSON.parse(s); } catch(e){} return defaultDB; }
   function saveDB() { try { localStorage.setItem(DB_KEY, JSON.stringify(DB)); } catch(e){} }
@@ -355,13 +363,26 @@
     `).join('');
   }
 
-  function onStudentChange(stId) { currentStudentId = stId; isAttendanceExpanded = false; renderChart(); document.getElementById('feedbackStudentSelect').value = stId; generateAutoFeedback(); }
-  function onFeedbackStudentChange(stId) { currentStudentId = stId; document.getElementById('chartStudentSelect').value = stId; renderChart(); generateAutoFeedback(); }
-
-  function toggleAttendanceExpand() {
-    isAttendanceExpanded = !isAttendanceExpanded;
+  function onStudentChange(stId) {
+    currentStudentId = stId;
+    expGrowth = false; expAttendance = false; expCounsel = false;
     renderChart();
+    document.getElementById('feedbackStudentSelect').value = stId;
+    generateAutoFeedback();
   }
+
+  function onFeedbackStudentChange(stId) {
+    currentStudentId = stId;
+    document.getElementById('chartStudentSelect').value = stId;
+    renderChart();
+    generateAutoFeedback();
+  }
+
+  // Toggle Functions
+  function toggleGrowthExpand() { expGrowth = !expGrowth; renderChart(); }
+  function toggleAttendanceExpand() { expAttendance = !expAttendance; renderChart(); }
+  function toggleCounselExpand() { expCounsel = !expCounsel; renderChart(); }
+  function toggleJournalExpand() { expJournal = !expJournal; renderJournal(); }
 
   function renderChart() {
     const student = DB.students.find(s => s.id === currentStudentId);
@@ -374,27 +395,37 @@
     document.getElementById('pPhone').innerText = student.phone || '미등록';
     document.getElementById('pNote').innerText = `특이사항: ${student.note || '없음'}`;
 
+    // 1. Growth Notes (Collapsible: default 3)
     const growths = DB.growths.filter(g => g.studentName === student.name);
-    document.getElementById('growthList').innerHTML = growths.length === 0 ? '<div class="card" style="text-align:center; color:#A0AEC0; font-size:13px;">작성된 관찰 메모가 없습니다.</div>' : growths.map(g => `
-      <div class="card">
-        <div class="card-top"><span class="badge orange">${g.date} · ${g.domain}</span><div class="action-group"><button class="btn-edit" onclick="openGrowthModal('${g.id}')">✏️ 수정</button><button class="btn-del" onclick="deleteGrowth('${g.id}')">🗑️ 삭제</button></div></div>
-        <div style="font-size:13px; font-weight:700; color:var(--primary); margin-bottom:4px;">주제: ${g.theme || '수업 활동'}</div>
-        <div style="font-size:13px; line-height:1.45;">${g.note}</div>
-        ${g.guide ? `<div class="note-box" style="margin-top:6px;">💡 지도방향: ${g.guide} (${g.teacher})</div>` : ''}
-      </div>
-    `).join('');
+    const btnG = document.getElementById('btnToggleGrowth');
+    if (growths.length === 0) {
+      document.getElementById('growthList').innerHTML = '<div class="card" style="text-align:center; color:#A0AEC0; font-size:13px;">작성된 관찰 메모가 없습니다.</div>';
+      btnG.style.display = 'none';
+    } else {
+      const displayG = expGrowth ? growths : growths.slice(0, 3);
+      document.getElementById('growthList').innerHTML = displayG.map(g => `
+        <div class="card">
+          <div class="card-top"><span class="badge orange">${g.date} · ${g.domain}</span><div class="action-group"><button class="btn-edit" onclick="openGrowthModal('${g.id}')">✏️ 수정</button><button class="btn-del" onclick="deleteGrowth('${g.id}')">🗑️ 삭제</button></div></div>
+          <div style="font-size:13px; font-weight:700; color:var(--primary); margin-bottom:4px;">주제: ${g.theme || '수업 활동'}</div>
+          <div style="font-size:13px; line-height:1.45;">${g.note}</div>
+          ${g.guide ? `<div class="note-box" style="margin-top:6px;">💡 지도방향: ${g.guide} (${g.teacher})</div>` : ''}
+        </div>
+      `).join('');
+      if (growths.length > 3) {
+        btnG.style.display = 'block';
+        btnG.innerText = expGrowth ? '▲ 최근 3개만 접기' : `▼ 이전 관찰메모 더보기 (총 ${growths.length}건)`;
+      } else { btnG.style.display = 'none'; }
+    }
 
-    // Attendance History - Collapsible (Max 3 by default)
+    // 2. Attendance History (Collapsible: default 3)
     const journals = DB.journals.filter(j => j.studentNames && j.studentNames.includes(student.name));
-    const btnMore = document.getElementById('btnToggleAttendance');
-
+    const btnA = document.getElementById('btnToggleAttendance');
     if (journals.length === 0) {
       document.getElementById('attendanceList').innerHTML = '<div class="card" style="text-align:center; color:#A0AEC0; font-size:13px;">참여한 수업 기록이 없습니다.</div>';
-      btnMore.style.display = 'none';
+      btnA.style.display = 'none';
     } else {
-      const displayJournals = isAttendanceExpanded ? journals : journals.slice(0, 3);
-
-      document.getElementById('attendanceList').innerHTML = displayJournals.map(j => `
+      const displayA = expAttendance ? journals : journals.slice(0, 3);
+      document.getElementById('attendanceList').innerHTML = displayA.map(j => `
         <div class="card">
           <div class="card-top"><span class="badge green">${j.date} · ${j.subject} (출석)</span><span style="font-size:11px; color:#718096; font-weight:600;">${j.className}</span></div>
           <div style="font-size:13px; font-weight:700;">${j.theme}</div>
@@ -402,27 +433,46 @@
           <div class="note-box" style="text-align:right; margin-top:6px;">담당: ${j.teacher}</div>
         </div>
       `).join('');
-
       if (journals.length > 3) {
-        btnMore.style.display = 'block';
-        btnMore.innerText = isAttendanceExpanded ? '▲ 최근 3개만 접기' : `▼ 이전 수업 이력 더보기 (총 ${journals.length}건)`;
-      } else {
-        btnMore.style.display = 'none';
-      }
+        btnA.style.display = 'block';
+        btnA.innerText = expAttendance ? '▲ 최근 3개만 접기' : `▼ 이전 수업이력 더보기 (총 ${journals.length}건)`;
+      } else { btnA.style.display = 'none'; }
     }
 
+    // 3. Counseling Records (Collapsible: default 3)
     const counsels = DB.counsels.filter(c => c.studentName === student.name);
-    document.getElementById('counselList').innerHTML = counsels.length === 0 ? '<div class="card" style="text-align:center; color:#A0AEC0; font-size:13px;">상담 기록이 없습니다.</div>' : counsels.map(c => `
-      <div class="card">
-        <div class="card-top"><span class="badge" style="background:${c.status==='조치완료'?'#E6F4EA':'#FFF0ED'}; color:${c.status==='조치완료'?'#137333':'#C53030'};">${c.date} · ${c.type} (${c.status})</span><div class="action-group"><button class="btn-edit" onclick="openCounselModal('${c.id}')">✏️ 수정</button><button class="btn-del" onclick="deleteCounsel('${c.id}')">🗑️ 삭제</button></div></div>
-        <div style="font-size:13px;"><strong>상담:</strong> ${c.content}</div>
-        ${c.action ? `<div class="note-box" style="margin-top:6px;"><strong>후속조치:</strong> ${c.action} (${c.teacher})</div>` : ''}
-      </div>
-    `).join('');
+    const btnC = document.getElementById('btnToggleCounsel');
+    if (counsels.length === 0) {
+      document.getElementById('counselList').innerHTML = '<div class="card" style="text-align:center; color:#A0AEC0; font-size:13px;">상담 기록이 없습니다.</div>';
+      btnC.style.display = 'none';
+    } else {
+      const displayC = expCounsel ? counsels : counsels.slice(0, 3);
+      document.getElementById('counselList').innerHTML = displayC.map(c => `
+        <div class="card">
+          <div class="card-top"><span class="badge" style="background:${c.status==='조치완료'?'#E6F4EA':'#FFF0ED'}; color:${c.status==='조치완료'?'#137333':'#C53030'};">${c.date} · ${c.type} (${c.status})</span><div class="action-group"><button class="btn-edit" onclick="openCounselModal('${c.id}')">✏️ 수정</button><button class="btn-del" onclick="deleteCounsel('${c.id}')">🗑️ 삭제</button></div></div>
+          <div style="font-size:13px;"><strong>상담:</strong> ${c.content}</div>
+          ${c.action ? `<div class="note-box" style="margin-top:6px;"><strong>후속조치:</strong> ${c.action} (${c.teacher})</div>` : ''}
+        </div>
+      `).join('');
+      if (counsels.length > 3) {
+        btnC.style.display = 'block';
+        btnC.innerText = expCounsel ? '▲ 최근 3개만 접기' : `▼ 이전 상담기록 더보기 (총 ${counsels.length}건)`;
+      } else { btnC.style.display = 'none'; }
+    }
   }
 
+  // TAB 2: Class Journals (Collapsible: default 5)
   function renderJournal() {
-    document.getElementById('journalList').innerHTML = DB.journals.length === 0 ? '<div class="card" style="text-align:center; color:#A0AEC0; font-size:13px;">등록된 수업일지가 없습니다.</div>' : DB.journals.map(j => `
+    const list = document.getElementById('journalList');
+    const btnJ = document.getElementById('btnToggleJournal');
+    if (DB.journals.length === 0) {
+      list.innerHTML = '<div class="card" style="text-align:center; color:#A0AEC0; font-size:13px;">등록된 수업일지가 없습니다.</div>';
+      btnJ.style.display = 'none';
+      return;
+    }
+
+    const displayJournals = expJournal ? DB.journals : DB.journals.slice(0, 5);
+    list.innerHTML = displayJournals.map(j => `
       <div class="card">
         <div class="card-top"><span class="badge">${j.date} · ${j.className} (${j.subject})</span><div class="action-group"><button class="btn-edit" onclick="openJournalModal('${j.id}')">✏️ 수정</button><button class="btn-del" onclick="deleteJournal('${j.id}')">🗑️ 삭제</button></div></div>
         <div style="font-size:14px; font-weight:800; color:var(--primary); margin-bottom:4px;">${j.theme}</div>
@@ -430,6 +480,13 @@
         <div class="note-box" style="margin-top:8px;"><strong>출석 원생:</strong> ${j.studentNames && j.studentNames.length > 0 ? j.studentNames.join(', ') : '없음'}<span style="float:right;">담당: ${j.teacher}</span></div>
       </div>
     `).join('');
+
+    if (DB.journals.length > 5) {
+      btnJ.style.display = 'block';
+      btnJ.innerText = expJournal ? '▲ 최근 5개만 접기' : `▼ 이전 수업일지 전체보기 (총 ${DB.journals.length}건)`;
+    } else {
+      btnJ.style.display = 'none';
+    }
   }
 
   function renderFeedback() {
