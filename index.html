@@ -40,6 +40,8 @@
     .p-item span:last-child { font-weight: 700; color: var(--text); }
     .note-box { font-size: 12px; color: var(--muted); background: #F8FAFC; padding: 8px 10px; border-radius: 8px; margin-top: 6px; line-height: 1.4; }
     .form-ctrl { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); font-size: 14px; background: #FFF; color: var(--text); outline: none; margin-bottom: 10px; }
+    .search-box { width: 100%; padding: 9px 12px; border-radius: 10px; border: 1.5px solid var(--primary-light); background: #F8FAFC; font-size: 13px; margin-bottom: 8px; outline: none; }
+    .search-box:focus { border-color: var(--primary); background: #FFF; }
     .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #FFF; border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 8px 0 12px 0; z-index: 100; max-width: 480px; margin: 0 auto; }
     .nav-btn { display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: none; color: var(--muted); font-size: 11px; font-weight: 700; cursor: pointer; flex: 1; }
     .nav-btn.active { color: var(--primary); }
@@ -76,7 +78,8 @@
   <!-- TAB 1: 성장차트 -->
   <div class="tab-content active" id="tab-chart">
     <div class="card" style="margin-bottom:12px;">
-      <label class="f-label">🔍 학생 선택 / 조회</label>
+      <label class="f-label">🔍 학생 검색 및 선택 (180명 대응)</label>
+      <input type="text" class="search-box" id="searchChartStudent" placeholder="🔎 학생 이름 검색 (예: 유주원, 김하늘)" oninput="filterStudentDropdown('chartStudentSelect', this.value)">
       <select class="form-ctrl" id="chartStudentSelect" style="margin-bottom:0;" onchange="onStudentChange(this.value)"></select>
     </div>
     <div class="card" id="studentProfileCard">
@@ -113,16 +116,27 @@
   <!-- TAB 3: 월간 피드백 -->
   <div class="tab-content" id="tab-feedback">
     <div class="card">
-      <label class="f-label">👤 대상 학생</label>
-      <select class="form-ctrl" id="feedbackStudentSelect" onchange="onFeedbackStudentChange(this.value)"></select>
+      <label class="f-label">👤 대상 학생 검색 및 선택</label>
+      <input type="text" class="search-box" id="searchFeedbackStudent" placeholder="🔎 학생 이름 검색" oninput="filterStudentDropdown('feedbackStudentSelect', this.value)">
+      <div style="display:flex; gap:8px; margin-bottom:10px;">
+        <select class="form-ctrl" id="feedbackStudentSelect" style="flex:1.2; margin-bottom:0;" onchange="onFeedbackStudentChange(this.value)"></select>
+        <select class="form-ctrl" id="feedbackMonthSelect" style="flex:1; margin-bottom:0;" onchange="generateAutoFeedback()">
+          <option value="2026-10" selected>2026년 10월</option>
+          <option value="2026-11">2026년 11월</option>
+          <option value="2026-12">2026년 12월</option>
+          <option value="2027-01">2027년 1월</option>
+          <option value="2027-02">2027년 2월</option>
+          <option value="2027-03">2027년 3월</option>
+        </select>
+      </div>
       <div style="display:flex; justify-content:space-between; align-items:center; margin:10px 0 6px 0;">
-        <span class="badge orange">✨ 10월 종합 성장 피드백</span>
-        <button class="btn-h" onclick="generateAutoFeedback()">⚡ 자동생성</button>
+        <span class="badge orange" id="feedbackMonthBadge">✨ 10월 종합 성장 피드백</span>
+        <button class="btn-h" onclick="generateAutoFeedback()">⚡ 월별 재취합</button>
       </div>
       <label class="f-label" style="margin-top:8px;">🖼️ 대표 작품 사진 (터치하여 변경)</label>
       <img src="https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=600&auto=format&fit=crop" id="feedbackImg" style="width:100%; height:180px; object-fit:cover; border-radius:12px; margin-bottom:10px; cursor:pointer;" onclick="document.getElementById('artworkFileInput').click()">
       <input type="file" id="artworkFileInput" accept="image/*" style="display:none;" onchange="onImageUploaded(event)">
-      <label class="f-label">💌 학부모 발송용 알림장 내용 (직접 수정 가능)</label>
+      <label class="f-label">💌 학부모 발송용 알림장 내용 (자유롭게 수정 가능)</label>
       <textarea class="form-ctrl" id="feedbackText" rows="7" style="line-height:1.5; font-size:13px;"></textarea>
       <div style="display:flex; gap:8px;">
         <button class="btn-submit" style="flex:1; background:#2D3748; margin-top:0;" onclick="copyFeedbackText()">📋 문구 복사</button>
@@ -135,7 +149,8 @@
   <div class="tab-content" id="tab-admin">
     <div class="section-head"><div class="section-title">🏫 운영 중인 반(Class) 목록</div><button class="btn-add" onclick="openClassModal()">+ 새 반 등록</button></div>
     <div id="classList"></div>
-    <div class="section-head" style="margin-top:24px;"><div class="section-title">🧑‍🎓 등록 원생 마스터 목록 (180명 관리)</div><button class="btn-add dark" onclick="openStudentModal()">+ 원생 등록</button></div>
+    <div class="section-head" style="margin-top:24px;"><div class="section-title">🧑‍🎓 등록 원생 목록 (180명 관리)</div><button class="btn-add dark" onclick="openStudentModal()">+ 원생 등록</button></div>
+    <input type="text" class="search-box" placeholder="🔎 원생 이름 또는 반 검색..." oninput="filterAdminStudentList(this.value)">
     <div id="studentList"></div>
   </div>
 
@@ -238,7 +253,7 @@
 </div>
 
 <script>
-  const DB_KEY = 'GRIMNAMU_DB_V8';
+  const DB_KEY = 'GRIMNAMU_DB_V9';
   const defaultDB = {
     classes: [
       { id: 'c1', name: '그림반', teacher: '당영혜 T', subTeacher: '최승아 T', desc: '초등 미술' },
@@ -280,23 +295,53 @@
 
   function render() { renderStudentDropdowns(); renderChart(); renderJournal(); renderFeedback(); renderAdmin(); }
 
-  function renderStudentDropdowns() {
+  function renderStudentDropdowns(filterKeyword = '') {
     const selChart = document.getElementById('chartStudentSelect');
     const selFeed = document.getElementById('feedbackStudentSelect');
     const selGrowth = document.getElementById('g_student');
     const selCoun = document.getElementById('coun_student');
+
     const st = DB.students.find(s => s.id === currentStudentId) || DB.students[0];
     if (st) currentStudentId = st.id;
 
+    const filtered = filterKeyword ? DB.students.filter(s => s.name.includes(filterKeyword) || s.className.includes(filterKeyword)) : DB.students;
+
     [selChart, selFeed, selGrowth, selCoun].forEach(sel => {
-      if(!sel) return; sel.innerHTML = '';
-      DB.students.forEach(s => {
+      if(!sel) return;
+      sel.innerHTML = '';
+      filtered.forEach(s => {
         const opt = document.createElement('option');
         opt.value = s.id; opt.innerText = `${s.name} (${s.type} · ${s.className})`;
         if (s.id === currentStudentId) opt.selected = true;
         sel.appendChild(opt);
       });
     });
+  }
+
+  function filterStudentDropdown(selectId, keyword) {
+    const sel = document.getElementById(selectId);
+    sel.innerHTML = '';
+    const filtered = DB.students.filter(s => s.name.includes(keyword) || s.className.includes(keyword));
+    filtered.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.id; opt.innerText = `${s.name} (${s.type} · ${s.className})`;
+      sel.appendChild(opt);
+    });
+    if (filtered.length > 0) {
+      sel.value = filtered[0].id;
+      if (selectId === 'chartStudentSelect') onStudentChange(filtered[0].id);
+      if (selectId === 'feedbackStudentSelect') onFeedbackStudentChange(filtered[0].id);
+    }
+  }
+
+  function filterAdminStudentList(keyword) {
+    const filtered = DB.students.filter(s => s.name.includes(keyword) || s.className.includes(keyword));
+    document.getElementById('studentList').innerHTML = filtered.map(s => `
+      <div class="card" style="margin-bottom:8px;">
+        <div class="card-top"><span style="font-size:14px; font-weight:800; color:var(--primary);">${s.name} (${s.type} · ${s.age})</span><div class="action-group"><button class="btn-edit" onclick="openStudentModal('${s.id}')">✏️ 수정</button><button class="btn-del" onclick="deleteStudent('${s.id}')">🗑️ 삭제</button></div></div>
+        <div style="font-size:12.5px;">배정반: <strong>${s.className}</strong> | 담임: ${s.teacher}</div>
+      </div>
+    `).join('');
   }
 
   function onStudentChange(stId) { currentStudentId = stId; renderChart(); document.getElementById('feedbackStudentSelect').value = stId; generateAutoFeedback(); }
@@ -357,19 +402,24 @@
   function renderFeedback() {
     const student = DB.students.find(s => s.id === currentStudentId);
     if (!student) return;
-    const txtArea = document.getElementById('feedbackText');
-    if (!txtArea.value || txtArea.dataset.stId !== student.id) generateAutoFeedback();
+    generateAutoFeedback();
   }
 
   function generateAutoFeedback() {
     const student = DB.students.find(s => s.id === currentStudentId);
     if (!student) return;
-    const journals = DB.journals.filter(j => j.studentNames && j.studentNames.includes(student.name));
-    const growths = DB.growths.filter(g => g.studentName === student.name);
-    let acts = journals.map(j => `• [${j.theme}]: ${j.content}`).join('\n') || '• 이달의 미술·독서 융합 수업에 성실히 참여했습니다.';
-    let notes = growths.map(g => `• [${g.domain}]: ${g.note}`).join('\n') || '• 색채 감각과 손끝 조형 능력이 꾸준히 향상되고 있습니다.';
-    document.getElementById('feedbackText').value = `🌿 [그림나무창의미술 10월 성장 리포트 - ${student.name} 어린이]\n\n안녕하세요, ${student.name} 학부모님! 그림나무창의미술입니다.\n10월 한 달 동안의 성장 소식을 전해드립니다.\n\n🎨 1. 이달의 주요 활동\n${acts}\n\n💡 2. 담임교사 관찰 및 지도 방향\n${notes}\n\n항상 믿고 함께해 주셔서 감사드립니다. ❤️`;
-    document.getElementById('feedbackText').dataset.stId = student.id;
+    const selectedMonth = document.getElementById('feedbackMonthSelect').value || '2026-10';
+    const monthNum = parseInt(selectedMonth.split('-')[1], 10);
+    document.getElementById('feedbackMonthBadge').innerText = `✨ ${monthNum}월 종합 성장 피드백`;
+
+    // Filter by selected Year-Month
+    const journals = DB.journals.filter(j => j.date.startsWith(selectedMonth) && j.studentNames && j.studentNames.includes(student.name));
+    const growths = DB.growths.filter(g => g.date.startsWith(selectedMonth) && g.studentName === student.name);
+
+    let acts = journals.map(j => `• [${j.theme}]: ${j.content}`).join('\n') || `• ${monthNum}월 미술·독서 융합 수업에 성실히 참여했습니다.`;
+    let notes = growths.map(g => `• [${g.domain}]: ${g.note}`).join('\n') || `• 표현력과 집중력이 향상되고 있습니다.`;
+
+    document.getElementById('feedbackText').value = `🌿 [그림나무창의미술 ${monthNum}월 성장 리포트 - ${student.name} 어린이]\n\n안녕하세요, ${student.name} 학부모님! 그림나무창의미술입니다.\n${monthNum}월 한 달 동안의 아이 성장 소식을 전해드립니다.\n\n🎨 1. 이달의 주요 활동\n${acts}\n\n💡 2. 담임교사 관찰 및 지도 방향\n${notes}\n\n항상 믿고 함께해 주셔서 감사드립니다. ❤️`;
   }
 
   function onImageUploaded(e) {
@@ -382,9 +432,11 @@
 
   function downloadParentCard() {
     const student = DB.students.find(s => s.id === currentStudentId); if (!student) return;
+    const selectedMonth = document.getElementById('feedbackMonthSelect').value || '2026-10';
+    const monthNum = parseInt(selectedMonth.split('-')[1], 10);
     const printWin = window.open('', '_blank');
     if(printWin) {
-      printWin.document.write(`<html><head><title>${student.name} 성장 리포트</title><style>body{font-family:sans-serif;padding:20px;background:#FAF8F5;} .card{background:#FFF;padding:20px;border-radius:16px;max-width:420px;margin:0 auto;} h2{color:#1A4731;text-align:center;} img{width:100%;height:200px;object-fit:cover;border-radius:12px;} p{font-size:13px;line-height:1.6;white-space:pre-wrap;}</style></head><body><div class="card"><h2>🌳 그림나무창의미술 성장 리포트</h2><img src="${document.getElementById('feedbackImg').src}"><p>${document.getElementById('feedbackText').value}</p></div></body></html>`);
+      printWin.document.write(`<html><head><title>${student.name} ${monthNum}월 성장 리포트</title><style>body{font-family:sans-serif;padding:20px;background:#FAF8F5;} .card{background:#FFF;padding:20px;border-radius:16px;max-width:420px;margin:0 auto;} h2{color:#1A4731;text-align:center;} img{width:100%;height:200px;object-fit:cover;border-radius:12px;} p{font-size:13px;line-height:1.6;white-space:pre-wrap;}</style></head><body><div class="card"><h2>🌳 그림나무창의미술 ${monthNum}월 성장 리포트</h2><img src="${document.getElementById('feedbackImg').src}"><p>${document.getElementById('feedbackText').value}</p></div></body></html>`);
       printWin.document.close();
       toast('🖼️ 리포트 카드가 생성되었습니다!');
     }
@@ -398,12 +450,7 @@
       </div>
     `).join('');
 
-    document.getElementById('studentList').innerHTML = DB.students.map(s => `
-      <div class="card" style="margin-bottom:8px;">
-        <div class="card-top"><span style="font-size:14px; font-weight:800; color:var(--primary);">${s.name} (${s.type} · ${s.age})</span><div class="action-group"><button class="btn-edit" onclick="openStudentModal('${s.id}')">✏️ 수정</button><button class="btn-del" onclick="deleteStudent('${s.id}')">🗑️ 삭제</button></div></div>
-        <div style="font-size:12.5px;">배정반: <strong>${s.className}</strong> | 담임: ${s.teacher}</div>
-      </div>
-    `).join('');
+    filterAdminStudentList('');
   }
 
   // CRUD
