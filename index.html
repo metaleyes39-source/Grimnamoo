@@ -266,7 +266,10 @@
 </div>
 
 <script>
-  const DB_KEY = 'GRIMNAMU_DB_V11';
+  const DB_KEY = 'GRIMNAMU_DB_V12';
+  // 원장님의 실시간 구글 스프레드시트 웹앱 API 연동 URL
+  const GOOGLE_API_URL = 'https://script.google.com/macros/s/AKfycby72VN1tDjCgXSoxJLCsfCOVAW4o3PxDRG_RqeYWjigMI9wxiRAlI6PiF2zkLZttQBR/exec';
+
   const defaultDB = {
     classes: [
       { id: 'c1', name: '그림반', teacher: '당영혜 T', subTeacher: '최승아 T', desc: '초등 미술' },
@@ -290,14 +293,49 @@
   let DB = loadDB();
   let currentStudentId = DB.students[0] ? DB.students[0].id : '';
 
-  // Expand states for each section
   let expGrowth = false;
   let expAttendance = false;
   let expCounsel = false;
   let expJournal = false;
 
-  function loadDB() { try { const s = localStorage.getItem(DB_KEY); if (s) return JSON.parse(s); } catch(e){} return defaultDB; }
-  function saveDB() { try { localStorage.setItem(DB_KEY, JSON.stringify(DB)); } catch(e){} }
+  function loadDB() {
+    try {
+      const s = localStorage.getItem(DB_KEY);
+      if (s) return JSON.parse(s);
+    } catch(e){}
+    return defaultDB;
+  }
+
+  // 실시간 구글 시트 저장 및 로컬 동시 보존
+  function saveDB() {
+    try {
+      localStorage.setItem(DB_KEY, JSON.stringify(DB));
+      // 구글 스프레드시트 클라우드로 실시간 전송
+      if (GOOGLE_API_URL) {
+        fetch(GOOGLE_API_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(DB)
+        }).catch(err => console.log('Google Cloud Sync'));
+      }
+    } catch(e){}
+  }
+
+  // 구글 시트에서 실시간 최신 데이터 불러오기
+  function syncFromGoogleCloud() {
+    if (!GOOGLE_API_URL) return;
+    fetch(GOOGLE_API_URL)
+      .then(res => res.json())
+      .then(cloudData => {
+        if (cloudData && cloudData.students && cloudData.students.length > 0) {
+          DB = cloudData;
+          localStorage.setItem(DB_KEY, JSON.stringify(DB));
+          render();
+        }
+      }).catch(e => console.log('Offline/Local Mode'));
+  }
+
   function toast(msg) { const t = document.getElementById('toast'); t.innerText = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1800); }
   function openM(id) { document.getElementById(id).classList.add('open'); }
   function closeM(id) { document.getElementById(id).classList.remove('open'); }
@@ -310,7 +348,10 @@
     render();
   }
 
-  window.onload = function() { render(); };
+  window.onload = function() {
+    render();
+    syncFromGoogleCloud();
+  };
 
   function render() { renderStudentDropdowns(); renderChart(); renderJournal(); renderFeedback(); renderAdmin(); }
 
@@ -378,7 +419,6 @@
     generateAutoFeedback();
   }
 
-  // Toggle Functions
   function toggleGrowthExpand() { expGrowth = !expGrowth; renderChart(); }
   function toggleAttendanceExpand() { expAttendance = !expAttendance; renderChart(); }
   function toggleCounselExpand() { expCounsel = !expCounsel; renderChart(); }
@@ -395,7 +435,7 @@
     document.getElementById('pPhone').innerText = student.phone || '미등록';
     document.getElementById('pNote').innerText = `특이사항: ${student.note || '없음'}`;
 
-    // 1. Growth Notes (Collapsible: default 3)
+    // Growth Notes
     const growths = DB.growths.filter(g => g.studentName === student.name);
     const btnG = document.getElementById('btnToggleGrowth');
     if (growths.length === 0) {
@@ -417,7 +457,7 @@
       } else { btnG.style.display = 'none'; }
     }
 
-    // 2. Attendance History (Collapsible: default 3)
+    // Attendance History
     const journals = DB.journals.filter(j => j.studentNames && j.studentNames.includes(student.name));
     const btnA = document.getElementById('btnToggleAttendance');
     if (journals.length === 0) {
@@ -439,7 +479,7 @@
       } else { btnA.style.display = 'none'; }
     }
 
-    // 3. Counseling Records (Collapsible: default 3)
+    // Counseling
     const counsels = DB.counsels.filter(c => c.studentName === student.name);
     const btnC = document.getElementById('btnToggleCounsel');
     if (counsels.length === 0) {
@@ -461,7 +501,7 @@
     }
   }
 
-  // TAB 2: Class Journals (Collapsible: default 5)
+  // TAB 2: Class Journals
   function renderJournal() {
     const list = document.getElementById('journalList');
     const btnJ = document.getElementById('btnToggleJournal');
@@ -564,8 +604,8 @@
     const id = document.getElementById('s_id').value; const name = document.getElementById('s_name').value.trim();
     if (!name) return alert('학생 이름을 입력해주세요.');
     const sData = { name, type: document.getElementById('s_type').value, age: document.getElementById('s_age').value.trim(), className: document.getElementById('s_class').value.trim(), teacher: document.getElementById('s_teacher').value.trim(), subTeacher: document.getElementById('s_subTeacher').value.trim(), phone: document.getElementById('s_phone').value.trim(), note: document.getElementById('s_note').value.trim() };
-    if (id) { Object.assign(DB.students.find(x => x.id === id), sData); toast('✅ 프로필 수정 완료'); }
-    else { const n = { id: 's_' + Date.now(), ...sData }; DB.students.push(n); currentStudentId = n.id; toast('✅ 원생 등록 완료'); }
+    if (id) { Object.assign(DB.students.find(x => x.id === id), sData); toast('✅ 프로필 수정 완료 (구글 시트 연동)'); }
+    else { const n = { id: 's_' + Date.now(), ...sData }; DB.students.push(n); currentStudentId = n.id; toast('✅ 원생 등록 완료 (구글 시트 연동)'); }
     saveDB(); closeM('modalStudent'); render();
   }
 
@@ -616,7 +656,7 @@
     const studentNames = Array.from(document.querySelectorAll('#j_chkStudents input:checked')).map(cb => cb.value);
     const jData = { date: document.getElementById('j_date').value, className: document.getElementById('j_class').value, subject: document.getElementById('j_subject').value, theme, content: document.getElementById('j_content').value.trim(), teacher: document.getElementById('j_teacher').value.trim(), studentNames };
     if (id) { Object.assign(DB.journals.find(x => x.id === id), jData); toast('✅ 수업일지 수정 완료'); }
-    else { DB.journals.unshift({ id: 'j_' + Date.now(), ...jData }); toast('✅ 수업일지 저장 및 차트 연동 완료!'); }
+    else { DB.journals.unshift({ id: 'j_' + Date.now(), ...jData }); toast('✅ 수업일지 저장 및 차트 연동 완료! (구글 시트 동기화)'); }
     saveDB(); closeM('modalJournal'); render();
   }
 
@@ -639,7 +679,7 @@
     const note = document.getElementById('g_note').value.trim(); if (!note) return alert('메모를 입력해주세요.');
     const gData = { studentName: st.name, date: document.getElementById('g_date').value, domain: document.getElementById('g_domain').value, theme: document.getElementById('g_theme').value.trim(), note, guide: document.getElementById('g_guide').value.trim(), teacher: document.getElementById('g_teacher').value.trim() };
     if (id) { Object.assign(DB.growths.find(x => x.id === id), gData); toast('✅ 메모 수정 완료'); }
-    else { DB.growths.unshift({ id: 'g_' + Date.now(), ...gData }); toast('✅ 메모 등록 완료'); }
+    else { DB.growths.unshift({ id: 'g_' + Date.now(), ...gData }); toast('✅ 메모 등록 완료 (구글 시트 동기화)'); }
     saveDB(); closeM('modalGrowth'); render();
   }
 
@@ -662,7 +702,7 @@
     const content = document.getElementById('coun_content').value.trim(); if (!content) return alert('상담 내용을 입력해주세요.');
     const cData = { studentName: st.name, date: document.getElementById('coun_date').value, type: document.getElementById('coun_type').value, content, action: document.getElementById('coun_action').value.trim(), status: document.getElementById('coun_status').value, teacher: document.getElementById('coun_teacher').value.trim() };
     if (id) { Object.assign(DB.counsels.find(x => x.id === id), cData); toast('✅ 상담기록 수정 완료'); }
-    else { DB.counsels.unshift({ id: 'coun_' + Date.now(), ...cData }); toast('✅ 상담기록 등록 완료'); }
+    else { DB.counsels.unshift({ id: 'coun_' + Date.now(), ...cData }); toast('✅ 상담기록 등록 완료 (구글 시트 동기화)'); }
     saveDB(); closeM('modalCounsel'); render();
   }
 
