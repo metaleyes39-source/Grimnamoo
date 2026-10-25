@@ -42,6 +42,7 @@
     .form-ctrl { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); font-size: 14px; background: #FFF; color: var(--text); outline: none; margin-bottom: 10px; }
     .search-box { width: 100%; padding: 9px 12px; border-radius: 10px; border: 1.5px solid var(--primary-light); background: #F8FAFC; font-size: 13px; margin-bottom: 8px; outline: none; }
     .search-box:focus { border-color: var(--primary); background: #FFF; }
+    .btn-more { width: 100%; background: #F1F5F9; color: var(--muted); border: 1px solid var(--border); padding: 8px; border-radius: 10px; font-size: 12px; font-weight: 700; cursor: pointer; margin-top: 4px; text-align: center; }
     .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #FFF; border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 8px 0 12px 0; z-index: 100; max-width: 480px; margin: 0 auto; }
     .nav-btn { display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: none; color: var(--muted); font-size: 11px; font-weight: 700; cursor: pointer; flex: 1; }
     .nav-btn.active { color: var(--primary); }
@@ -98,10 +99,19 @@
       </div>
       <div class="note-box" id="pNote">특이사항: 색채감각 우수, 자유로운 발상 드로잉</div>
     </div>
+
+    <!-- Growth Observation -->
     <div class="section-head"><div class="section-title">🎨 성장 관찰 메모</div><button class="btn-add" onclick="openGrowthModal()">+ 메모 추가</button></div>
     <div id="growthList"></div>
-    <div class="section-head"><div class="section-title">📖 수업 참여 이력 (출석연동)</div></div>
+
+    <!-- Attendance / Lessons (Expand/Collapse) -->
+    <div class="section-head">
+      <div class="section-title">📖 수업 참여 이력 (출석연동)</div>
+    </div>
     <div id="attendanceList"></div>
+    <button type="button" class="btn-more" id="btnToggleAttendance" style="display:none;" onclick="toggleAttendanceExpand()"></button>
+
+    <!-- Counseling -->
     <div class="section-head"><div class="section-title">📞 학부모 상담 및 조치</div><button class="btn-add" onclick="openCounselModal()">+ 상담 추가</button></div>
     <div id="counselList"></div>
   </div>
@@ -131,7 +141,7 @@
       </div>
       <div style="display:flex; justify-content:space-between; align-items:center; margin:10px 0 6px 0;">
         <span class="badge orange" id="feedbackMonthBadge">✨ 10월 종합 성장 피드백</span>
-        <button class="btn-h" onclick="generateAutoFeedback()">⚡ 월별 재취합</button>
+        <button class="btn-h" onclick="generateAutoFeedback()">⚡ AI 월별 재취합</button>
       </div>
       <label class="f-label" style="margin-top:8px;">🖼️ 대표 작품 사진 (터치하여 변경)</label>
       <img src="https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=600&auto=format&fit=crop" id="feedbackImg" style="width:100%; height:180px; object-fit:cover; border-radius:12px; margin-bottom:10px; cursor:pointer;" onclick="document.getElementById('artworkFileInput').click()">
@@ -253,7 +263,7 @@
 </div>
 
 <script>
-  const DB_KEY = 'GRIMNAMU_DB_V9';
+  const DB_KEY = 'GRIMNAMU_DB_V10';
   const defaultDB = {
     classes: [
       { id: 'c1', name: '그림반', teacher: '당영혜 T', subTeacher: '최승아 T', desc: '초등 미술' },
@@ -276,6 +286,7 @@
 
   let DB = loadDB();
   let currentStudentId = DB.students[0] ? DB.students[0].id : '';
+  let isAttendanceExpanded = false;
 
   function loadDB() { try { const s = localStorage.getItem(DB_KEY); if (s) return JSON.parse(s); } catch(e){} return defaultDB; }
   function saveDB() { try { localStorage.setItem(DB_KEY, JSON.stringify(DB)); } catch(e){} }
@@ -344,8 +355,13 @@
     `).join('');
   }
 
-  function onStudentChange(stId) { currentStudentId = stId; renderChart(); document.getElementById('feedbackStudentSelect').value = stId; generateAutoFeedback(); }
+  function onStudentChange(stId) { currentStudentId = stId; isAttendanceExpanded = false; renderChart(); document.getElementById('feedbackStudentSelect').value = stId; generateAutoFeedback(); }
   function onFeedbackStudentChange(stId) { currentStudentId = stId; document.getElementById('chartStudentSelect').value = stId; renderChart(); generateAutoFeedback(); }
+
+  function toggleAttendanceExpand() {
+    isAttendanceExpanded = !isAttendanceExpanded;
+    renderChart();
+  }
 
   function renderChart() {
     const student = DB.students.find(s => s.id === currentStudentId);
@@ -368,15 +384,32 @@
       </div>
     `).join('');
 
+    // Attendance History - Collapsible (Max 3 by default)
     const journals = DB.journals.filter(j => j.studentNames && j.studentNames.includes(student.name));
-    document.getElementById('attendanceList').innerHTML = journals.length === 0 ? '<div class="card" style="text-align:center; color:#A0AEC0; font-size:13px;">참여한 수업 기록이 없습니다.</div>' : journals.map(j => `
-      <div class="card">
-        <div class="card-top"><span class="badge green">${j.date} · ${j.subject} (출석)</span><span style="font-size:11px; color:#718096; font-weight:600;">${j.className}</span></div>
-        <div style="font-size:13px; font-weight:700;">${j.theme}</div>
-        <div style="font-size:12.5px; color:#4A5568; margin-top:4px;">${j.content}</div>
-        <div class="note-box" style="text-align:right; margin-top:6px;">담당: ${j.teacher}</div>
-      </div>
-    `).join('');
+    const btnMore = document.getElementById('btnToggleAttendance');
+
+    if (journals.length === 0) {
+      document.getElementById('attendanceList').innerHTML = '<div class="card" style="text-align:center; color:#A0AEC0; font-size:13px;">참여한 수업 기록이 없습니다.</div>';
+      btnMore.style.display = 'none';
+    } else {
+      const displayJournals = isAttendanceExpanded ? journals : journals.slice(0, 3);
+
+      document.getElementById('attendanceList').innerHTML = displayJournals.map(j => `
+        <div class="card">
+          <div class="card-top"><span class="badge green">${j.date} · ${j.subject} (출석)</span><span style="font-size:11px; color:#718096; font-weight:600;">${j.className}</span></div>
+          <div style="font-size:13px; font-weight:700;">${j.theme}</div>
+          <div style="font-size:12.5px; color:#4A5568; margin-top:4px;">${j.content}</div>
+          <div class="note-box" style="text-align:right; margin-top:6px;">담당: ${j.teacher}</div>
+        </div>
+      `).join('');
+
+      if (journals.length > 3) {
+        btnMore.style.display = 'block';
+        btnMore.innerText = isAttendanceExpanded ? '▲ 최근 3개만 접기' : `▼ 이전 수업 이력 더보기 (총 ${journals.length}건)`;
+      } else {
+        btnMore.style.display = 'none';
+      }
+    }
 
     const counsels = DB.counsels.filter(c => c.studentName === student.name);
     document.getElementById('counselList').innerHTML = counsels.length === 0 ? '<div class="card" style="text-align:center; color:#A0AEC0; font-size:13px;">상담 기록이 없습니다.</div>' : counsels.map(c => `
@@ -412,7 +445,6 @@
     const monthNum = parseInt(selectedMonth.split('-')[1], 10);
     document.getElementById('feedbackMonthBadge').innerText = `✨ ${monthNum}월 종합 성장 피드백`;
 
-    // Filter by selected Year-Month
     const journals = DB.journals.filter(j => j.date.startsWith(selectedMonth) && j.studentNames && j.studentNames.includes(student.name));
     const growths = DB.growths.filter(g => g.date.startsWith(selectedMonth) && g.studentName === student.name);
 
