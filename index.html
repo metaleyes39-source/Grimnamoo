@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>그림나무창의미술 - 학생 성장관리 시스템</title>
+  <style>
+    :root {
+      --primary: #1A4731; --primary-light: #EBF4F0; --secondary: #FF6F59; --secondary-light: #FFF0ED;
+      --bg: #F7F9F8; --card-bg: #FFFFFF; --text: #2D3748; --muted: #718096; --border: #E2E8F0; --radius: 16px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; -webkit-tap-highlight-color: transparent; }
+    body { background-color: var(--bg); color: var(--text); padding-bottom: 85px; }
+    .app { max-width: 480px; margin: 0 auto; min-height: 100vh; background: var(--bg); position: relative; }
+    header { background: #FFF; padding: 14px 18px; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; display: flex; justify-content: space-between; align-items: center; }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand-logo { font-size: 24px; background: var(--primary-light); width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 12px; }
+    .brand-text h1 { font-size: 16px; font-weight: 800; color: var(--primary); line-height: 1.2; }
+    .brand-text p { font-size: 11px; color: var(--muted); font-weight: 600; }
+    .header-btns { display: flex; gap: 6px; }
+    .btn-h { padding: 6px 10px; font-size: 11px; font-weight: 700; border-radius: 8px; border: 1px solid var(--border); background: #FFF; color: var(--text); cursor: pointer; }
+    .btn-h.primary { background: var(--primary); color: #FFF; border-color: var(--primary); }
+    .tab-content { display: none; padding: 16px; }
+    .tab-content.active { display: block; }
+    .section-head { display: flex; justify-content: space-between; align-items: center; margin: 16px 0 10px 0; }
+    .section-title { font-size: 15px; font-weight: 800; color: var(--primary); }
+    .btn-add { background: var(--secondary); color: #FFF; border: none; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer; }
+    .btn-add.dark { background: var(--primary); }
+    .card { background: #FFF; border-radius: var(--radius); padding: 15px; border: 1px solid var(--border); margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+    .card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; background: var(--primary-light); color: var(--primary); }
+    .badge.orange { background: var(--secondary-light); color: var(--secondary); }
+    .badge.green { background: #E6F4EA; color: #137333; }
+    .action-group { display: flex; gap: 6px; }
+    .btn-edit, .btn-del { border: none; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; }
+    .btn-edit { background: #EDF2F7; color: #4A5568; }
+    .btn-del { background: #FED7D7; color: #C53030; }
+    .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 13px; margin-bottom: 6px; }
+    .p-item span:first-child { color: var(--muted); font-weight: 600; margin-right: 4px; }
+    .p-item span:last-child { font-weight: 700; color: var(--text); }
+    .note-box { font-size: 12px; color: var(--muted); background: #F8FAFC; padding: 8px 10px; border-radius: 8px; margin-top: 6px; line-height: 1.4; }
+    .form-ctrl { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); font-size: 14px; background: #FFF; color: var(--text); outline: none; margin-bottom: 10px; }
+    .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #FFF; border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 8px 0 12px 0; z-index: 100; max-width: 480px; margin: 0 auto; }
+    .nav-btn { display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: none; color: var(--muted); font-size: 11px; font-weight: 700; cursor: pointer; flex: 1; }
+    .nav-btn.active { color: var(--primary); }
+    .nav-btn span:first-child { font-size: 18px; }
+    .modal-wrap { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.65); z-index: 200; align-items: flex-end; justify-content: center; }
+    .modal-wrap.open { display: flex; }
+    .modal-body { background: #FFF; width: 100%; max-width: 480px; border-radius: 20px 20px 0 0; padding: 20px; max-height: 85vh; overflow-y: auto; box-sizing: border-box; }
+    .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+    .modal-head h3 { font-size: 16px; font-weight: 800; color: var(--primary); }
+    .btn-close { background: none; border: none; font-size: 22px; color: var(--muted); cursor: pointer; }
+    .f-label { display: block; font-size: 12px; font-weight: 700; margin-bottom: 4px; color: var(--text); }
+    .btn-submit { width: 100%; background: var(--primary); color: #FFF; border: none; padding: 13px; border-radius: 12px; font-size: 15px; font-weight: 800; cursor: pointer; margin-top: 10px; }
+    .chk-box-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #F8FAFC; padding: 10px; border-radius: 10px; border: 1px solid var(--border); max-height: 120px; overflow-y: auto; margin-bottom: 10px; }
+    .chk-item { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: rgba(26, 71, 49, 0.95); color: #FFF; padding: 10px 20px; border-radius: 30px; font-size: 13px; font-weight: 700; z-index: 300; transition: transform 0.25s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.15); pointer-events: none; }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+<div class="app">
+  <div id="toast">알림</div>
+  <header>
+    <div class="brand">
+      <div class="brand-logo">🌳</div>
+      <div class="brand-text"><h1>그림나무창의미술</h1><p>학생 성장관리 시스템</p></div>
+    </div>
+    <div class="header-btns">
+      <button class="btn-h primary" onclick="exportData()">💾 백업</button>
+      <button class="btn-h" onclick="document.getElementById('importFile').click()">📂 복원</button>
+      <input type="file" id="importFile" style="display:none;" onchange="importData(event)">
+    </div>
+  </header>
+
+  <!-- TAB 1: 성장차트 -->
+  <div class="tab-content active" id="tab-chart">
+    <div class="card" style="margin-bottom:12px;">
+      <label class="f-label">🔍 학생 선택 / 조회</label>
+      <select class="form-ctrl" id="chartStudentSelect" style="margin-bottom:0;" onchange="onStudentChange(this.value)"></select>
+    </div>
+    <div class="card" id="studentProfileCard">
+      <div class="card-top">
+        <span class="badge" id="pBadge">초등부 · 8세</span>
+        <div class="action-group">
+          <button class="btn-edit" onclick="openStudentModal(currentStudentId)">✏️ 수정</button>
+          <button class="btn-del" onclick="deleteStudent(currentStudentId)">🗑️ 삭제</button>
+        </div>
+      </div>
+      <div class="profile-grid">
+        <div class="p-item"><span>배정반:</span> <span id="pClass">그림반, 창의반</span></div>
+        <div class="p-item"><span>담임:</span> <span id="pTeacher">당영혜 T</span></div>
+        <div class="p-item"><span>부담임:</span> <span id="pSubTeacher">최승아 T</span></div>
+        <div class="p-item"><span>연락처:</span> <span id="pPhone">01084098555</span></div>
+      </div>
+      <div class="note-box" id="pNote">특이사항: 색채감각 우수, 자유로운 발상 드로잉</div>
+    </div>
+    <div class="section-head"><div class="section-title">🎨 성장 관찰 메모</div><button class="btn-add" onclick="openGrowthModal()">+ 메모 추가</button></div>
+    <div id="growthList"></div>
+    <div class="section-head"><div class="section-title">📖 수업 참여 이력 (출석연동)</div></div>
+    <div id="attendanceList"></div>
+    <div class="section-head"><div class="section-title">📞 학부모 상담 및 조치</div><button class="btn-add" onclick="openCounselModal()">+ 상담 추가</button></div>
+    <div id="counselList"></div>
+  </div>
+
+  <!-- TAB 2: 수업일지 -->
+  <div class="tab-content" id="tab-journal">
+    <div class="section-head"><div class="section-title">📖 반별 수업일지 대장</div><button class="btn-add dark" onclick="openJournalModal()">+ 새 수업일지 작성</button></div>
+    <p style="font-size:12px; color:var(--muted); margin-bottom:12px;">💡 수업일지 작성 시 출석한 원생들을 체크하면 학생별 성장차트에 자동 연동됩니다.</p>
+    <div id="journalList"></div>
+  </div>
+
+  <!-- TAB 3: 월간 피드백 -->
+  <div class="tab-content" id="tab-feedback">
+    <div class="card">
+      <label class="f-label">👤 대상 학생</label>
+      <select class="form-ctrl" id="feedbackStudentSelect" onchange="onFeedbackStudentChange(this.value)"></select>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin:10px 0 6px 0;">
+        <span class="badge orange">✨ 10월 종합 성장 피드백</span>
+        <button class="btn-h" onclick="generateAutoFeedback()">⚡ 자동생성</button>
+      </div>
+      <label class="f-label" style="margin-top:8px;">🖼️ 대표 작품 사진 (터치하여 변경)</label>
+      <img src="https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=600&auto=format&fit=crop" id="feedbackImg" style="width:100%; height:180px; object-fit:cover; border-radius:12px; margin-bottom:10px; cursor:pointer;" onclick="document.getElementById('artworkFileInput').click()">
+      <input type="file" id="artworkFileInput" accept="image/*" style="display:none;" onchange="onImageUploaded(event)">
+      <label class="f-label">💌 학부모 발송용 알림장 내용 (직접 수정 가능)</label>
+      <textarea class="form-ctrl" id="feedbackText" rows="7" style="line-height:1.5; font-size:13px;"></textarea>
+      <div style="display:flex; gap:8px;">
+        <button class="btn-submit" style="flex:1; background:#2D3748; margin-top:0;" onclick="copyFeedbackText()">📋 문구 복사</button>
+        <button class="btn-submit" style="flex:1.2; background:var(--secondary); margin-top:0;" onclick="downloadParentCard()">🖼️ 카드 인쇄/저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 4: 원생 및 반 관리 -->
+  <div class="tab-content" id="tab-admin">
+    <div class="section-head"><div class="section-title">🏫 운영 중인 반(Class) 목록</div><button class="btn-add" onclick="openClassModal()">+ 새 반 등록</button></div>
+    <div id="classList"></div>
+    <div class="section-head" style="margin-top:24px;"><div class="section-title">🧑‍🎓 등록 원생 마스터 목록 (180명 관리)</div><button class="btn-add dark" onclick="openStudentModal()">+ 원생 등록</button></div>
+    <div id="studentList"></div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <nav class="nav-bar">
+    <button class="nav-btn active" onclick="switchTab('tab-chart', this)"><span>🌱</span><span>성장차트</span></button>
+    <button class="nav-btn" onclick="switchTab('tab-journal', this)"><span>📖</span><span>수업일지</span></button>
+    <button class="nav-btn" onclick="switchTab('tab-feedback', this)"><span>✨</span><span>월간피드백</span></button>
+    <button class="nav-btn" onclick="switchTab('tab-admin', this)"><span>👥</span><span>원생/반관리</span></button>
+  </nav>
+</div>
+
+<!-- MODALS -->
+<div class="modal-wrap" id="modalStudent">
+  <div class="modal-body">
+    <div class="modal-head"><h3 id="mStudentTitle">🧑‍🎓 원생 정보</h3><button class="btn-close" onclick="closeM('modalStudent')">✕</button></div>
+    <input type="hidden" id="s_id">
+    <label class="f-label">학생 이름 *</label><input type="text" class="form-ctrl" id="s_name" placeholder="예: 유주원">
+    <div style="display:flex; gap:8px;">
+      <div style="flex:1;"><label class="f-label">소속 구분</label><select class="form-ctrl" id="s_type"><option value="초등부">초등부</option><option value="유치부">유치부</option><option value="중등부">중등부</option></select></div>
+      <div style="flex:1;"><label class="f-label">연령 / 학년</label><input type="text" class="form-ctrl" id="s_age" placeholder="예: 8세 / 초1"></div>
+    </div>
+    <label class="f-label">배정반</label><input type="text" class="form-ctrl" id="s_class" placeholder="예: 그림반, 창의반">
+    <div style="display:flex; gap:8px;">
+      <div style="flex:1;"><label class="f-label">담임교사</label><input type="text" class="form-ctrl" id="s_teacher" placeholder="예: 당영혜 T"></div>
+      <div style="flex:1;"><label class="f-label">부담임교사</label><input type="text" class="form-ctrl" id="s_subTeacher" placeholder="예: 최승아 T"></div>
+    </div>
+    <label class="f-label">보호자 연락처</label><input type="text" class="form-ctrl" id="s_phone" placeholder="예: 01084098555">
+    <label class="f-label">특이사항</label><textarea class="form-ctrl" id="s_note" rows="2"></textarea>
+    <button type="button" class="btn-submit" onclick="saveStudent()">저장하기</button>
+  </div>
+</div>
+
+<div class="modal-wrap" id="modalClass">
+  <div class="modal-body">
+    <div class="modal-head"><h3 id="mClassTitle">🏫 반 등록 / 수정</h3><button class="btn-close" onclick="closeM('modalClass')">✕</button></div>
+    <input type="hidden" id="c_id">
+    <label class="f-label">반 이름 *</label><input type="text" class="form-ctrl" id="c_name" placeholder="예: 새싹그림반">
+    <div style="display:flex; gap:8px;">
+      <div style="flex:1;"><label class="f-label">담임교사</label><input type="text" class="form-ctrl" id="c_teacher" placeholder="예: 당영혜 T"></div>
+      <div style="flex:1;"><label class="f-label">부담임교사</label><input type="text" class="form-ctrl" id="c_subTeacher" placeholder="예: 최승아 T"></div>
+    </div>
+    <label class="f-label">설명</label><input type="text" class="form-ctrl" id="c_desc" placeholder="예: 6-7세 유치부">
+    <button type="button" class="btn-submit" onclick="saveClass()">저장하기</button>
+  </div>
+</div>
+
+<div class="modal-wrap" id="modalJournal">
+  <div class="modal-body">
+    <div class="modal-head"><h3 id="mJournalTitle">📖 반별 수업일지 작성</h3><button class="btn-close" onclick="closeM('modalJournal')">✕</button></div>
+    <input type="hidden" id="j_id">
+    <label class="f-label">수업 일자 *</label><input type="date" class="form-ctrl" id="j_date">
+    <div style="display:flex; gap:8px;">
+      <div style="flex:1.2;"><label class="f-label">대상 반</label><select class="form-ctrl" id="j_class"></select></div>
+      <div style="flex:1;"><label class="f-label">과목</label><select class="form-ctrl" id="j_subject"><option value="미술">미술</option><option value="독서·논술">독서·논술</option><option value="독서·미술">독서·미술</option></select></div>
+    </div>
+    <label class="f-label">수업 주제 *</label><input type="text" class="form-ctrl" id="j_theme" placeholder="예: 가을 숲속 친구들">
+    <label class="f-label">활동 내용 및 학습목표</label><textarea class="form-ctrl" id="j_content" rows="3"></textarea>
+    <label class="f-label">담당 교사</label><input type="text" class="form-ctrl" id="j_teacher" placeholder="예: 당영혜 T">
+    <label class="f-label">⭐ 출석 학생 체크 (차트 자동 연동)</label>
+    <div class="chk-box-wrap" id="j_chkStudents"></div>
+    <button type="button" class="btn-submit" onclick="saveJournal()">수업일지 저장 및 차트 연동</button>
+  </div>
+</div>
+
+<div class="modal-wrap" id="modalGrowth">
+  <div class="modal-body">
+    <div class="modal-head"><h3 id="mGrowthTitle">🎨 성장 관찰 메모</h3><button class="btn-close" onclick="closeM('modalGrowth')">✕</button></div>
+    <input type="hidden" id="g_id">
+    <label class="f-label">대상 학생 *</label><select class="form-ctrl" id="g_student"></select>
+    <div style="display:flex; gap:8px;">
+      <div style="flex:1;"><label class="f-label">관찰 일자</label><input type="date" class="form-ctrl" id="g_date"></div>
+      <div style="flex:1;"><label class="f-label">관찰 영역</label><select class="form-ctrl" id="g_domain"><option value="창의표현">창의표현</option><option value="색채감각">색채감각</option><option value="집중/몰입">집중/몰입</option><option value="소근육/협응">소근육/협응</option></select></div>
+    </div>
+    <label class="f-label">수업 주제</label><input type="text" class="form-ctrl" id="g_theme">
+    <label class="f-label">성장 및 발달 관찰 메모 *</label><textarea class="form-ctrl" id="g_note" rows="3"></textarea>
+    <label class="f-label">추천 지도방향</label><input type="text" class="form-ctrl" id="g_guide">
+    <label class="f-label">기록 교사</label><input type="text" class="form-ctrl" id="g_teacher" placeholder="예: 당영혜 T">
+    <button type="button" class="btn-submit" onclick="saveGrowth()">관찰메모 저장</button>
+  </div>
+</div>
+
+<div class="modal-wrap" id="modalCounsel">
+  <div class="modal-body">
+    <div class="modal-head"><h3 id="mCounselTitle">📞 학부모 상담 기록</h3><button class="btn-close" onclick="closeM('modalCounsel')">✕</button></div>
+    <input type="hidden" id="coun_id">
+    <label class="f-label">대상 학생 *</label><select class="form-ctrl" id="coun_student"></select>
+    <div style="display:flex; gap:8px;">
+      <div style="flex:1;"><label class="f-label">상담 일자</label><input type="date" class="form-ctrl" id="coun_date"></div>
+      <div style="flex:1;"><label class="f-label">상담 방법</label><select class="form-ctrl" id="coun_type"><option value="전화 상담">전화 상담</option><option value="방문 상담">방문 상담</option><option value="알림장/메신저">알림장/메신저</option></select></div>
+    </div>
+    <label class="f-label">상담 및 요청 내용 *</label><textarea class="form-ctrl" id="coun_content" rows="2"></textarea>
+    <label class="f-label">원내 후속 조치</label><textarea class="form-ctrl" id="coun_action" rows="2"></textarea>
+    <div style="display:flex; gap:8px;">
+      <div style="flex:1;"><label class="f-label">조치 상태</label><select class="form-ctrl" id="coun_status"><option value="조치완료">조치완료</option><option value="진행중">진행중</option></select></div>
+      <div style="flex:1;"><label class="f-label">상담자</label><input type="text" class="form-ctrl" id="coun_teacher" placeholder="예: 당영혜 T"></div>
+    </div>
+    <button type="button" class="btn-submit" onclick="saveCounsel()">상담기록 저장</button>
+  </div>
+</div>
+
+<script>
+  const DB_KEY = 'GRIMNAMU_DB_V8';
+  const defaultDB = {
+    classes: [
+      { id: 'c1', name: '그림반', teacher: '당영혜 T', subTeacher: '최승아 T', desc: '초등 미술' },
+      { id: 'c2', name: '창의반', teacher: '당영혜 T', subTeacher: '최승아 T', desc: '초등 조형' }
+    ],
+    students: [
+      { id: 's1', name: '유주원', type: '초등부', age: '8세', className: '그림반, 창의반', teacher: '당영혜 T', subTeacher: '최승아 T', phone: '01084098555', note: '색채감각 우수, 자유로운 발상 드로잉' },
+      { id: 's2', name: '김하늘', type: '유치부', age: '7세', className: '그림반', teacher: '당영혜 T', subTeacher: '최승아 T', phone: '010-1234-5671', note: '물감 혼색과 스크래치 흥미' }
+    ],
+    journals: [
+      { id: 'j1', date: '2026-10-12', className: '그림반', subject: '미술', theme: '가을 숲속 친구들', content: '낙엽 질감 표현 및 클레이 다람쥐 조형 지도', teacher: '당영혜 T', studentNames: ['유주원', '김하늘'] }
+    ],
+    growths: [
+      { id: 'g1', studentName: '유주원', date: '2026-10-12', domain: '창의표현', theme: '가을 숲속 친구들', note: '도토리 모자를 점토로 빚을 때 손끝 힘이 좋아졌고 독창적인 표정을 부여함.', guide: '세밀한 도구 사용법 안내', teacher: '당영혜 T' }
+    ],
+    counsels: [
+      { id: 'coun1', studentName: '유주원', date: '2026-10-13', type: '전화 상담', content: '가정에서 글씨 쓰기를 힘들어한다는 고민', action: '수업 중 소근육 조형 활동 강화', status: '조치완료', teacher: '당영혜 T' }
+    ]
+  };
+
+  let DB = loadDB();
+  let currentStudentId = DB.students[0] ? DB.students[0].id : '';
+
+  function loadDB() { try { const s = localStorage.getItem(DB_KEY); if (s) return JSON.parse(s); } catch(e){} return defaultDB; }
+  function saveDB() { try { localStorage.setItem(DB_KEY, JSON.stringify(DB)); } catch(e){} }
+  function toast(msg) { const t = document.getElementById('toast'); t.innerText = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1800); }
+  function openM(id) { document.getElementById(id).classList.add('open'); }
+  function closeM(id) { document.getElementById(id).classList.remove('open'); }
+
+  function switchTab(tabId, el) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    el.classList.add('active');
+    render();
+  }
+
+  window.onload = function() { render(); };
+
+  function render() { renderStudentDropdowns(); renderChart(); renderJournal(); renderFeedback(); renderAdmin(); }
+
+  function renderStudentDropdowns() {
+    const selChart = document.getElementById('chartStudentSelect');
+    const selFeed = document.getElementById('feedbackStudentSelect');
+    const selGrowth = document.getElementById('g_student');
+    const selCoun = document.getElementById('coun_student');
+    const st = DB.students.find(s => s.id === currentStudentId) || DB.students[0];
+    if (st) currentStudentId = st.id;
+
+    [selChart, selFeed, selGrowth, selCoun].forEach(sel => {
+      if(!sel) return; sel.innerHTML = '';
+      DB.students.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.id; opt.innerText = `${s.name} (${s.type} · ${s.className})`;
+        if (s.id === currentStudentId) opt.selected = true;
+        sel.appendChild(opt);
+      });
+    });
+  }
+
+  function onStudentChange(stId) { currentStudentId = stId; renderChart(); document.getElementById('feedbackStudentSelect').value = stId; generateAutoFeedback(); }
+  function onFeedbackStudentChange(stId) { currentStudentId = stId; document.getElementById('chartStudentSelect').value = stId; renderChart(); generateAutoFeedback(); }
+
+  function renderChart() {
+    const student = DB.students.find(s => s.id === currentStudentId);
+    if (!student) { document.getElementById('studentProfileCard').style.display = 'none'; return; }
+    document.getElementById('studentProfileCard').style.display = 'block';
+    document.getElementById('pBadge').innerText = `${student.type} · ${student.age}`;
+    document.getElementById('pClass').innerText = student.className;
+    document.getElementById('pTeacher').innerText = student.teacher;
+    document.getElementById('pSubTeacher').innerText = student.subTeacher || '없음';
+    document.getElementById('pPhone').innerText = student.phone || '미등록';
+    document.getElementById('pNote').innerText = `특이사항: ${student.note || '없음'}`;
+
+    const growths = DB.growths.filter(g => g.studentName === student.name);
+    document.getElementById('growthList').innerHTML = growths.length === 0 ? '<div class="card" style="text-align:center; color:#A0AEC0; font-size:13px;">작성된 관찰 메모가 없습니다.</div>' : growths.map(g => `
+      <div class="card">
+        <div class="card-top"><span class="badge orange">${g.date} · ${g.domain}</span><div class="action-group"><button class="btn-edit" onclick="openGrowthModal('${g.id}')">✏️ 수정</button><button class="btn-del" onclick="deleteGrowth('${g.id}')">🗑️ 삭제</button></div></div>
+        <div style="font-size:13px; font-weight:700; color:var(--primary); margin-bottom:4px;">주제: ${g.theme || '수업 활동'}</div>
+        <div style="font-size:13px; line-height:1.45;">${g.note}</div>
+        ${g.guide ? `<div class="note-box" style="margin-top:6px;">💡 지도방향: ${g.guide} (${g.teacher})</div>` : ''}
+      </div>
+    `).join('');
+
+    const journals = DB.journals.filter(j => j.studentNames && j.studentNames.includes(student.name));
+    document.getElementById('attendanceList').innerHTML = journals.length === 0 ? '<div class="card" style="text-align:center; color:#A0AEC0; font-size:13px;">참여한 수업 기록이 없습니다.</div>' : journals.map(j => `
+      <div class="card">
+        <div class="card-top"><span class="badge green">${j.date} · ${j.subject} (출석)</span><span style="font-size:11px; color:#718096; font-weight:600;">${j.className}</span></div>
+        <div style="font-size:13px; font-weight:700;">${j.theme}</div>
+        <div style="font-size:12.5px; color:#4A5568; margin-top:4px;">${j.content}</div>
+        <div class="note-box" style="text-align:right; margin-top:6px;">담당: ${j.teacher}</div>
+      </div>
+    `).join('');
+
+    const counsels = DB.counsels.filter(c => c.studentName === student.name);
+    document.getElementById('counselList').innerHTML = counsels.length === 0 ? '<div class="card" style="text-align:center; color:#A0AEC0; font-size:13px;">상담 기록이 없습니다.</div>' : counsels.map(c => `
+      <div class="card">
+        <div class="card-top"><span class="badge" style="background:${c.status==='조치완료'?'#E6F4EA':'#FFF0ED'}; color:${c.status==='조치완료'?'#137333':'#C53030'};">${c.date} · ${c.type} (${c.status})</span><div class="action-group"><button class="btn-edit" onclick="openCounselModal('${c.id}')">✏️ 수정</button><button class="btn-del" onclick="deleteCounsel('${c.id}')">🗑️ 삭제</button></div></div>
+        <div style="font-size:13px;"><strong>상담:</strong> ${c.content}</div>
+        ${c.action ? `<div class="note-box" style="margin-top:6px;"><strong>후속조치:</strong> ${c.action} (${c.teacher})</div>` : ''}
+      </div>
+    `).join('');
+  }
+
+  function renderJournal() {
+    document.getElementById('journalList').innerHTML = DB.journals.length === 0 ? '<div class="card" style="text-align:center; color:#A0AEC0; font-size:13px;">등록된 수업일지가 없습니다.</div>' : DB.journals.map(j => `
+      <div class="card">
+        <div class="card-top"><span class="badge">${j.date} · ${j.className} (${j.subject})</span><div class="action-group"><button class="btn-edit" onclick="openJournalModal('${j.id}')">✏️ 수정</button><button class="btn-del" onclick="deleteJournal('${j.id}')">🗑️ 삭제</button></div></div>
+        <div style="font-size:14px; font-weight:800; color:var(--primary); margin-bottom:4px;">${j.theme}</div>
+        <div style="font-size:13px; color:#2D3748; line-height:1.45;">${j.content}</div>
+        <div class="note-box" style="margin-top:8px;"><strong>출석 원생:</strong> ${j.studentNames && j.studentNames.length > 0 ? j.studentNames.join(', ') : '없음'}<span style="float:right;">담당: ${j.teacher}</span></div>
+      </div>
+    `).join('');
+  }
+
+  function renderFeedback() {
+    const student = DB.students.find(s => s.id === currentStudentId);
+    if (!student) return;
+    const txtArea = document.getElementById('feedbackText');
+    if (!txtArea.value || txtArea.dataset.stId !== student.id) generateAutoFeedback();
+  }
+
+  function generateAutoFeedback() {
+    const student = DB.students.find(s => s.id === currentStudentId);
+    if (!student) return;
+    const journals = DB.journals.filter(j => j.studentNames && j.studentNames.includes(student.name));
+    const growths = DB.growths.filter(g => g.studentName === student.name);
+    let acts = journals.map(j => `• [${j.theme}]: ${j.content}`).join('\n') || '• 이달의 미술·독서 융합 수업에 성실히 참여했습니다.';
+    let notes = growths.map(g => `• [${g.domain}]: ${g.note}`).join('\n') || '• 색채 감각과 손끝 조형 능력이 꾸준히 향상되고 있습니다.';
+    document.getElementById('feedbackText').value = `🌿 [그림나무창의미술 10월 성장 리포트 - ${student.name} 어린이]\n\n안녕하세요, ${student.name} 학부모님! 그림나무창의미술입니다.\n10월 한 달 동안의 성장 소식을 전해드립니다.\n\n🎨 1. 이달의 주요 활동\n${acts}\n\n💡 2. 담임교사 관찰 및 지도 방향\n${notes}\n\n항상 믿고 함께해 주셔서 감사드립니다. ❤️`;
+    document.getElementById('feedbackText').dataset.stId = student.id;
+  }
+
+  function onImageUploaded(e) {
+    const f = e.target.files[0]; if(!f) return;
+    const r = new FileReader(); r.onload = function(evt) { document.getElementById('feedbackImg').src = evt.target.result; toast('📸 대표작 사진이 등록되었습니다.'); };
+    r.readAsDataURL(f);
+  }
+
+  function copyFeedbackText() { navigator.clipboard.writeText(document.getElementById('feedbackText').value).then(() => toast('📋 알림장 문구가 복사되었습니다!')); }
+
+  function downloadParentCard() {
+    const student = DB.students.find(s => s.id === currentStudentId); if (!student) return;
+    const printWin = window.open('', '_blank');
+    if(printWin) {
+      printWin.document.write(`<html><head><title>${student.name} 성장 리포트</title><style>body{font-family:sans-serif;padding:20px;background:#FAF8F5;} .card{background:#FFF;padding:20px;border-radius:16px;max-width:420px;margin:0 auto;} h2{color:#1A4731;text-align:center;} img{width:100%;height:200px;object-fit:cover;border-radius:12px;} p{font-size:13px;line-height:1.6;white-space:pre-wrap;}</style></head><body><div class="card"><h2>🌳 그림나무창의미술 성장 리포트</h2><img src="${document.getElementById('feedbackImg').src}"><p>${document.getElementById('feedbackText').value}</p></div></body></html>`);
+      printWin.document.close();
+      toast('🖼️ 리포트 카드가 생성되었습니다!');
+    }
+  }
+
+  function renderAdmin() {
+    document.getElementById('classList').innerHTML = DB.classes.map(c => `
+      <div class="card" style="margin-bottom:8px;">
+        <div class="card-top"><span class="badge" style="background:var(--primary); color:#FFF;">${c.name}</span><div class="action-group"><button class="btn-edit" onclick="openClassModal('${c.id}')">✏️ 수정</button><button class="btn-del" onclick="deleteClass('${c.id}')">🗑️ 삭제</button></div></div>
+        <div style="font-size:12.5px;">담임: <strong>${c.teacher}</strong> | 부담임: ${c.subTeacher || '없음'}</div>
+      </div>
+    `).join('');
+
+    document.getElementById('studentList').innerHTML = DB.students.map(s => `
+      <div class="card" style="margin-bottom:8px;">
+        <div class="card-top"><span style="font-size:14px; font-weight:800; color:var(--primary);">${s.name} (${s.type} · ${s.age})</span><div class="action-group"><button class="btn-edit" onclick="openStudentModal('${s.id}')">✏️ 수정</button><button class="btn-del" onclick="deleteStudent('${s.id}')">🗑️ 삭제</button></div></div>
+        <div style="font-size:12.5px;">배정반: <strong>${s.className}</strong> | 담임: ${s.teacher}</div>
+      </div>
+    `).join('');
+  }
+
+  // CRUD
+  function openStudentModal(stId = null) {
+    document.getElementById('s_id').value = stId || '';
+    document.getElementById('mStudentTitle').innerText = stId ? '🧑‍🎓 원생 프로필 수정' : '🧑‍🎓 신규 원생 등록';
+    if (stId) {
+      const s = DB.students.find(x => x.id === stId);
+      if (s) {
+        document.getElementById('s_name').value = s.name; document.getElementById('s_type').value = s.type; document.getElementById('s_age').value = s.age;
+        document.getElementById('s_class').value = s.className; document.getElementById('s_teacher').value = s.teacher; document.getElementById('s_subTeacher').value = s.subTeacher || '';
+        document.getElementById('s_phone').value = s.phone || ''; document.getElementById('s_note').value = s.note || '';
+      }
+    } else {
+      document.getElementById('s_name').value = ''; document.getElementById('s_age').value = '8세'; document.getElementById('s_class').value = '그림반';
+      document.getElementById('s_teacher').value = '당영혜 T'; document.getElementById('s_subTeacher').value = '최승아 T'; document.getElementById('s_phone').value = ''; document.getElementById('s_note').value = '';
+    }
+    openM('modalStudent');
+  }
+
+  function saveStudent() {
+    const id = document.getElementById('s_id').value; const name = document.getElementById('s_name').value.trim();
+    if (!name) return alert('학생 이름을 입력해주세요.');
+    const sData = { name, type: document.getElementById('s_type').value, age: document.getElementById('s_age').value.trim(), className: document.getElementById('s_class').value.trim(), teacher: document.getElementById('s_teacher').value.trim(), subTeacher: document.getElementById('s_subTeacher').value.trim(), phone: document.getElementById('s_phone').value.trim(), note: document.getElementById('s_note').value.trim() };
+    if (id) { Object.assign(DB.students.find(x => x.id === id), sData); toast('✅ 프로필 수정 완료'); }
+    else { const n = { id: 's_' + Date.now(), ...sData }; DB.students.push(n); currentStudentId = n.id; toast('✅ 원생 등록 완료'); }
+    saveDB(); closeM('modalStudent'); render();
+  }
+
+  function deleteStudent(stId) {
+    if (confirm('정말 삭제하시겠습니까?')) { DB.students = DB.students.filter(x => x.id !== stId); currentStudentId = DB.students[0] ? DB.students[0].id : ''; saveDB(); render(); toast('🗑️ 삭제되었습니다.'); }
+  }
+
+  function openClassModal(cId = null) {
+    document.getElementById('c_id').value = cId || '';
+    document.getElementById('mClassTitle').innerText = cId ? '🏫 반 정보 수정' : '🏫 신규 반 등록';
+    if (cId) {
+      const c = DB.classes.find(x => x.id === cId);
+      if (c) { document.getElementById('c_name').value = c.name; document.getElementById('c_teacher').value = c.teacher; document.getElementById('c_subTeacher').value = c.subTeacher || ''; document.getElementById('c_desc').value = c.desc || ''; }
+    } else {
+      document.getElementById('c_name').value = ''; document.getElementById('c_teacher').value = '당영혜 T'; document.getElementById('c_subTeacher').value = '최승아 T'; document.getElementById('c_desc').value = '';
+    }
+    openM('modalClass');
+  }
+
+  function saveClass() {
+    const id = document.getElementById('c_id').value; const name = document.getElementById('c_name').value.trim();
+    if (!name) return alert('반 이름을 입력해주세요.');
+    const cData = { name, teacher: document.getElementById('c_teacher').value.trim(), subTeacher: document.getElementById('c_subTeacher').value.trim(), desc: document.getElementById('c_desc').value.trim() };
+    if (id) { Object.assign(DB.classes.find(x => x.id === id), cData); toast('✅ 반 정보 수정 완료'); }
+    else { DB.classes.push({ id: 'c_' + Date.now(), ...cData }); toast('✅ 새 반 등록 완료'); }
+    saveDB(); closeM('modalClass'); render();
+  }
+
+  function deleteClass(cId) { if (confirm('반을 삭제하시겠습니까?')) { DB.classes = DB.classes.filter(x => x.id !== cId); saveDB(); render(); toast('🗑️ 반 삭제 완료'); } }
+
+  function openJournalModal(jId = null) {
+    document.getElementById('j_id').value = jId || '';
+    document.getElementById('j_class').innerHTML = DB.classes.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    let selected = [];
+    if (jId) {
+      const j = DB.journals.find(x => x.id === jId);
+      if (j) { document.getElementById('j_date').value = j.date; document.getElementById('j_class').value = j.className; document.getElementById('j_subject').value = j.subject; document.getElementById('j_theme').value = j.theme; document.getElementById('j_content').value = j.content; document.getElementById('j_teacher').value = j.teacher; selected = j.studentNames || []; }
+    } else {
+      document.getElementById('j_date').value = new Date().toISOString().slice(0, 10); document.getElementById('j_theme').value = ''; document.getElementById('j_content').value = ''; document.getElementById('j_teacher').value = '당영혜 T'; selected = DB.students.map(s => s.name);
+    }
+    document.getElementById('j_chkStudents').innerHTML = DB.students.map(s => `<label class="chk-item"><input type="checkbox" value="${s.name}" ${selected.includes(s.name)?'checked':''}><span>${s.name}</span></label>`).join('');
+    openM('modalJournal');
+  }
+
+  function saveJournal() {
+    const id = document.getElementById('j_id').value; const theme = document.getElementById('j_theme').value.trim();
+    if (!theme) return alert('수업 주제를 입력해주세요.');
+    const studentNames = Array.from(document.querySelectorAll('#j_chkStudents input:checked')).map(cb => cb.value);
+    const jData = { date: document.getElementById('j_date').value, className: document.getElementById('j_class').value, subject: document.getElementById('j_subject').value, theme, content: document.getElementById('j_content').value.trim(), teacher: document.getElementById('j_teacher').value.trim(), studentNames };
+    if (id) { Object.assign(DB.journals.find(x => x.id === id), jData); toast('✅ 수업일지 수정 완료'); }
+    else { DB.journals.unshift({ id: 'j_' + Date.now(), ...jData }); toast('✅ 수업일지 저장 및 차트 연동 완료!'); }
+    saveDB(); closeM('modalJournal'); render();
+  }
+
+  function deleteJournal(jId) { if (confirm('삭제하시겠습니까?')) { DB.journals = DB.journals.filter(x => x.id !== jId); saveDB(); render(); toast('🗑️ 삭제 완료'); } }
+
+  function openGrowthModal(gId = null) {
+    document.getElementById('g_id').value = gId || ''; renderStudentDropdowns();
+    if (gId) {
+      const g = DB.growths.find(x => x.id === gId);
+      if (g) { const st = DB.students.find(s => s.name === g.studentName); if (st) document.getElementById('g_student').value = st.id; document.getElementById('g_date').value = g.date; document.getElementById('g_domain').value = g.domain; document.getElementById('g_theme').value = g.theme || ''; document.getElementById('g_note').value = g.note; document.getElementById('g_guide').value = g.guide || ''; document.getElementById('g_teacher').value = g.teacher; }
+    } else {
+      document.getElementById('g_date').value = new Date().toISOString().slice(0, 10); document.getElementById('g_theme').value = ''; document.getElementById('g_note').value = ''; document.getElementById('g_guide').value = ''; document.getElementById('g_teacher').value = '당영혜 T';
+    }
+    openM('modalGrowth');
+  }
+
+  function saveGrowth() {
+    const id = document.getElementById('g_id').value; const st = DB.students.find(s => s.id === document.getElementById('g_student').value);
+    if (!st) return alert('학생을 선택해주세요.');
+    const note = document.getElementById('g_note').value.trim(); if (!note) return alert('메모를 입력해주세요.');
+    const gData = { studentName: st.name, date: document.getElementById('g_date').value, domain: document.getElementById('g_domain').value, theme: document.getElementById('g_theme').value.trim(), note, guide: document.getElementById('g_guide').value.trim(), teacher: document.getElementById('g_teacher').value.trim() };
+    if (id) { Object.assign(DB.growths.find(x => x.id === id), gData); toast('✅ 메모 수정 완료'); }
+    else { DB.growths.unshift({ id: 'g_' + Date.now(), ...gData }); toast('✅ 메모 등록 완료'); }
+    saveDB(); closeM('modalGrowth'); render();
+  }
+
+  function deleteGrowth(gId) { if (confirm('삭제하시겠습니까?')) { DB.growths = DB.growths.filter(x => x.id !== gId); saveDB(); render(); toast('🗑️ 삭제 완료'); } }
+
+  function openCounselModal(counId = null) {
+    document.getElementById('coun_id').value = counId || ''; renderStudentDropdowns();
+    if (counId) {
+      const c = DB.counsels.find(x => x.id === counId);
+      if (c) { const st = DB.students.find(s => s.name === c.studentName); if (st) document.getElementById('coun_student').value = st.id; document.getElementById('coun_date').value = c.date; document.getElementById('coun_type').value = c.type; document.getElementById('coun_content').value = c.content; document.getElementById('coun_action').value = c.action || ''; document.getElementById('coun_status').value = c.status; document.getElementById('coun_teacher').value = c.teacher; }
+    } else {
+      document.getElementById('coun_date').value = new Date().toISOString().slice(0, 10); document.getElementById('coun_content').value = ''; document.getElementById('coun_action').value = ''; document.getElementById('coun_status').value = '조치완료'; document.getElementById('coun_teacher').value = '당영혜 T';
+    }
+    openM('modalCounsel');
+  }
+
+  function saveCounsel() {
+    const id = document.getElementById('coun_id').value; const st = DB.students.find(s => s.id === document.getElementById('coun_student').value);
+    if (!st) return alert('학생을 선택해주세요.');
+    const content = document.getElementById('coun_content').value.trim(); if (!content) return alert('상담 내용을 입력해주세요.');
+    const cData = { studentName: st.name, date: document.getElementById('coun_date').value, type: document.getElementById('coun_type').value, content, action: document.getElementById('coun_action').value.trim(), status: document.getElementById('coun_status').value, teacher: document.getElementById('coun_teacher').value.trim() };
+    if (id) { Object.assign(DB.counsels.find(x => x.id === id), cData); toast('✅ 상담기록 수정 완료'); }
+    else { DB.counsels.unshift({ id: 'coun_' + Date.now(), ...cData }); toast('✅ 상담기록 등록 완료'); }
+    saveDB(); closeM('modalCounsel'); render();
+  }
+
+  function deleteCounsel(counId) { if (confirm('삭제하시겠습니까?')) { DB.counsels = DB.counsels.filter(x => x.id !== counId); saveDB(); render(); toast('🗑️ 삭제 완료'); } }
+
+  function exportData() {
+    const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(DB, null, 2));
+    a.download = `그림나무창의미술_백업_${new Date().toISOString().slice(0,10)}.json`; document.body.appendChild(a); a.click(); a.remove(); toast('💾 백업 완료!');
+  }
+
+  function importData(e) {
+    const f = e.target.files[0]; if (!f) return;
+    const r = new FileReader(); r.onload = function(evt) {
+      try { const p = JSON.parse(evt.target.result); if (p.students) { DB = p; saveDB(); render(); toast('📂 복원 완료!'); } } catch(err){ alert('오류'); }
+    };
+    r.readAsText(f);
+  }
+</script>
+</body>
+</html>
