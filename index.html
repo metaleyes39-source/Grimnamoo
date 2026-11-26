@@ -402,17 +402,24 @@
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: 6px;
-      max-height: 120px;
+      max-height: 140px;
       overflow-y: auto;
       background: #F8F9FA;
-      padding: 8px;
+      padding: 10px;
       border-radius: 10px;
+      border: 1px solid var(--border);
     }
     .checkbox-item {
       display: flex;
       align-items: center;
       gap: 6px;
       font-size: 13px;
+      cursor: pointer;
+    }
+    .checkbox-item input {
+      accent-color: var(--primary);
+      width: 16px;
+      height: 16px;
     }
 
     /* 토스트 알림 */
@@ -642,7 +649,7 @@
     </div>
     <div class="form-group">
       <label class="form-label">연령 / 학년</label>
-      <input type="text" id="modalStudentAge" class="form-control" placeholder="예: 초등부 8세 (초1)">
+      <input type="text" id="modalStudentAge" class="form-control" placeholder="예: 8세 (초1)">
     </div>
     <div class="form-group">
       <label class="form-label">학부모 연락처</label>
@@ -666,11 +673,11 @@
     <input type="hidden" id="modalClassId">
     <div class="form-group">
       <label class="form-label">반 명칭 *</label>
-      <input type="text" id="modalClassName" class="form-control" placeholder="예: 새싹그림반">
+      <input type="text" id="modalClassName" class="form-control" placeholder="예: 그림나무자곡">
     </div>
     <div class="form-group">
       <label class="form-label">담임 교사</label>
-      <input type="text" id="modalClassMainTeacher" class="form-control" placeholder="예: 당영혜 T">
+      <input type="text" id="modalClassMainTeacher" class="form-control" placeholder="예: 조은주 T">
     </div>
     <div class="form-group">
       <label class="form-label">부담임 교사</label>
@@ -717,7 +724,7 @@
   </div>
 </div>
 
-<!-- 수업일지 모달 -->
+<!-- 수업일지 모달 (출석 기본값: 전체 해제 + 전체선택/해제 버튼) -->
 <div id="journalModal" class="modal-overlay">
   <div class="modal-card">
     <div class="modal-title" id="journalModalTitle">수업일지 작성</div>
@@ -728,7 +735,7 @@
     </div>
     <div class="form-group">
       <label class="form-label">대상 반</label>
-      <select id="modalJournalClass" class="form-control" onchange="renderJournalStudentCheckboxes()"></select>
+      <select id="modalJournalClass" class="form-control" onchange="renderJournalStudentCheckboxes(null)"></select>
     </div>
     <div class="form-group">
       <label class="form-label">과목 구분</label>
@@ -747,7 +754,13 @@
       <textarea id="modalJournalContent" class="form-control" rows="3" placeholder="사용 재료, 중심 활동 과정 등"></textarea>
     </div>
     <div class="form-group">
-      <label class="form-label">출석 원생 체크 (체크 시 해당 학생 성장차트에 자동 연동)</label>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <label class="form-label" style="margin-bottom:0;">출석 원생 선택 (체크 시 성장차트 자동 연동)</label>
+        <div style="display:flex; gap:4px;">
+          <button type="button" class="btn btn-sm btn-outline" style="padding:2px 8px; font-size:11px;" onclick="toggleAllAttendance(true)">전체 선택</button>
+          <button type="button" class="btn btn-sm btn-outline" style="padding:2px 8px; font-size:11px;" onclick="toggleAllAttendance(false)">전체 해제</button>
+        </div>
+      </div>
       <div id="modalJournalStudentCheckboxes" class="checkbox-group"></div>
     </div>
     <div style="display:flex; gap:8px; margin-top:14px;">
@@ -810,26 +823,13 @@
   let expCounsel = false;
   let expJournal = false;
 
+  // 빈 기본 구조 (구글 시트에서 106명 데이터를 즉시 동기화)
   const DEFAULT_DB = {
-    classes: [
-      { id: 'c1', name: '그림반', mainTeacher: '당영혜 T', subTeacher: '최승아 T' },
-      { id: 'c2', name: '창의반', mainTeacher: '당영혜 T', subTeacher: '최승아 T' }
-    ],
-    students: [
-      { id: 's1', name: '유주원', classId: 'c1', age: '초등부 8세 (초1)', contact: '010-8409-8555', notes: '입체 조형 및 혼색 기법에 뛰어난 흥미를 보임.' },
-      { id: 's2', name: '김하늘', classId: 'c2', age: '유치부 7세', contact: '010-1234-5678', notes: '스토리텔링 표현력이 풍부하고 클레이 수업 선호.' }
-    ],
-    journals: [
-      { id: 'j1', date: '2026-10-12', classId: 'c1', subject: '창의미술', theme: '가을 숲속 친구들 입체 표현', content: '지점토와 나뭇잎 질감을 활용한 다람쥐와 도토리 조형 작업 진행.', studentNames: ['유주원', '김하늘'] },
-      { id: 'j2', date: '2026-10-19', classId: 'c1', subject: '독서미술', theme: '나무를 심은 사람과 숲 이야기', content: '그림책을 읽고 자신이 가꾸고 싶은 미래의 숲을 상상하여 켄트지에 수채화로 채색.', studentNames: ['유주원'] }
-    ],
-    growths: [
-      { id: 'g1', studentId: 's1', date: '2026-10-12', area: '창의표현', content: '입체 구조물을 안정감 있게 설계하고 도토리 모자의 미세한 질감까지 세밀하게 표현함. 형태를 잡는 손끝의 힘이 매우 안정적임.', guidance: '스토리의 배경을 확장하는 드로잉 유도' },
-      { id: 'g2', studentId: 's1', date: '2026-10-19', area: '독서이해', content: '동화 속 주인공의 마음을 묻는 질문에 자신만의 뚜렷한 생각을 이야기함. 푸른 숲을 칠할 때 과감한 그러데이션을 시도함.', guidance: '다양한 감정 표현 어휘와 연계한 색채 확장' }
-    ],
-    counsels: [
-      { id: 'cn1', studentId: 's1', date: '2026-10-13', method: '전화상담', request: '집에서도 클레이 만들기를 자주 하는데 학원 수업 진도와 흥미도 문의.', action: '소근육 발달과 형태 구성력이 매우 뛰어나 다음 주 조형 프로젝트 주도 역할 부여 예정 안내.', status: '조치완료' }
-    ]
+    classes: [],
+    students: [],
+    journals: [],
+    growths: [],
+    counsels: []
   };
 
   let db = loadLocalDB();
@@ -861,7 +861,7 @@
     }
   }
 
-  /* 구글 시트에서 최신 데이터 불러오기 */
+  /* 구글 시트에서 106명 원생 최신 데이터 불러오기 */
   async function syncFromGoogleCloud(isManual = false) {
     if (!GOOGLE_API_URL) return;
     if (isManual) showToast('🔄 구글 시트에서 최신 데이터를 가져오는 중...');
@@ -874,7 +874,7 @@
           db = cloudData;
           localStorage.setItem(DB_KEY, JSON.stringify(db));
           renderAll();
-          if (isManual) showToast('✅ 최신 데이터가 성공적으로 동기화되었습니다!');
+          if (isManual) showToast(`✅ 최신 데이터 동기화 완료! (원생 ${db.students.length}명)`);
           return;
         }
       }
@@ -1007,7 +1007,7 @@
     `;
 
     // 성장 관찰 메모 렌더링
-    const growths = db.growths.filter(g => g.studentId === student.id).sort((a,b) => b.date.localeCompare(a.date));
+    const growths = (db.growths || []).filter(g => g.studentId === student.id).sort((a,b) => b.date.localeCompare(a.date));
     const growthList = document.getElementById('growthList');
     const btnGrowthMore = document.getElementById('btnGrowthMore');
 
@@ -1040,7 +1040,7 @@
     }
 
     // 수업 참여 이력
-    const journals = db.journals.filter(j => j.studentNames && j.studentNames.includes(student.name)).sort((a,b) => b.date.localeCompare(a.date));
+    const journals = (db.journals || []).filter(j => j.studentNames && j.studentNames.includes(student.name)).sort((a,b) => b.date.localeCompare(a.date));
     const attList = document.getElementById('attendanceList');
     const attBadge = document.getElementById('attCountBadge');
     const btnAttMore = document.getElementById('btnAttendanceMore');
@@ -1075,7 +1075,7 @@
     }
 
     // 상담 기록
-    const counsels = db.counsels.filter(c => c.studentId === student.id).sort((a,b) => b.date.localeCompare(a.date));
+    const counsels = (db.counsels || []).filter(c => c.studentId === student.id).sort((a,b) => b.date.localeCompare(a.date));
     const counselList = document.getElementById('counselList');
     const btnCounselMore = document.getElementById('btnCounselMore');
 
@@ -1118,7 +1118,7 @@
   function renderJournalTab() {
     const list = document.getElementById('journalMasterList');
     const btnMore = document.getElementById('btnJournalMore');
-    const sorted = [...db.journals].sort((a,b) => b.date.localeCompare(a.date));
+    const sorted = [...(db.journals || [])].sort((a,b) => b.date.localeCompare(a.date));
 
     const visible = expJournal ? sorted : sorted.slice(0, 5);
 
@@ -1163,7 +1163,7 @@
   function toggleJournalExpand() { expJournal = !expJournal; renderJournalTab(); }
 
   /* ==========================================================================
-     3. 고도화된 AI 월간 성장 피드백 엔진 (미술+독서 종합 합성 / 지어내기 방지)
+     3. 월간 피드백 탭
      ========================================================================== */
   function renderFeedbackTab() {
     generateAutoFeedback();
@@ -1190,57 +1190,26 @@
     const clsName = cls ? cls.name : '그림나무창의미술';
     const teacherName = cls ? cls.mainTeacher : '담당 교사';
 
-    // 해당 월의 수업일지 및 관찰 메모 수집
-    const monthJournals = db.journals.filter(j => j.date.startsWith(month) && j.studentNames && j.studentNames.includes(student.name));
-    const monthGrowths = db.growths.filter(g => g.studentId === student.id && g.date.startsWith(month));
+    const monthJournals = (db.journals || []).filter(j => j.date.startsWith(month) && j.studentNames && j.studentNames.includes(student.name));
+    const monthGrowths = (db.growths || []).filter(g => g.studentId === student.id && g.date.startsWith(month));
 
-    // [검증 1] 관찰 데이터가 전혀 없을 때 (지어내지 않고 부족 안내)
     if (monthGrowths.length === 0 && monthJournals.length === 0) {
       document.getElementById('feedbackText').value = `[⚠️ ${monthNum}월 관찰 및 수업 기록 부족 안내]
 
 ${student.name} 어린이의 ${monthNum}월 등록된 성장 관찰 메모와 출석 수업일지가 아직 없습니다.
 
-선생님께서 [성장차트] 또는 [수업일지]에서 1건 이상의 수업 활동 및 관찰 메모를 작성해 주시면, AI가 이를 종합하여 학부모 발송용 자연스러운 성장 리포트(200~300자)를 자동 작성합니다.`;
+선생님께서 [성장차트] 또는 [수업일지]에서 1건 이상의 수업 활동 및 관찰 메모를 작성해 주시면, 자연스러운 200~300자 알림장이 자동 작성됩니다.`;
       updateCharCount();
       return;
     }
 
-    // 미술 & 독서 및 영역별 메모 분석
-    const artNotes = monthGrowths.filter(g => ['창의표현', '색채감각', '소근육협응'].includes(g.area));
-    const bookNotes = monthGrowths.filter(g => ['독서이해', '집중몰입'].includes(g.area));
     const allNotesContent = monthGrowths.map(g => g.content.trim()).filter(Boolean);
     const allGuidance = monthGrowths.map(g => g.guidance ? g.guidance.trim() : '').filter(Boolean);
 
-    // 1. 강점 및 흥미 합성
-    let strengthsText = '';
-    if (allNotesContent.length > 0) {
-      strengthsText = allNotesContent[0];
-    } else if (student.notes) {
-      strengthsText = `${student.name}이는 평소 ${student.notes}`;
-    } else {
-      strengthsText = `${student.name}이는 매 수업 높은 집중력과 자신만의 흥미를 가지고 성실하게 참여하고 있습니다.`;
-    }
+    let strengthsText = allNotesContent.length > 0 ? allNotesContent[0] : (student.notes ? `${student.name}이는 평소 ${student.notes}` : `${student.name}이는 매 수업 높은 집중력과 자신만의 흥미를 가지고 성실하게 참여하고 있습니다.`);
+    let progressNarrative = allNotesContent.length > 1 ? allNotesContent.slice(1).join(' ') : (monthJournals.length > 0 ? `특히 이번 달 '${monthJournals.map(j => j.theme).join(', ')}' 활동에서 형태를 구성하는 관찰력과 조절력이 크게 향상되었습니다.` : `수업 중 교사의 설명에 귀를 기울이며 표현하고자 하는 바를 끝까지 차분하게 완성해 냈습니다.`);
+    let guidanceText = allGuidance.length > 0 ? allGuidance[0] : `앞으로도 아이의 독창적인 생각과 색채 감각이 한층 풍부해질 수 있도록 세심하게 지도하겠습니다.`;
 
-    // 2. 발달 및 수업 에피소드 합성 (미술/독서 연계)
-    let progressNarrative = '';
-    if (allNotesContent.length > 1) {
-      progressNarrative = allNotesContent.slice(1).join(' ');
-    } else if (monthJournals.length > 0) {
-      const themes = monthJournals.map(j => j.theme).join(', ');
-      progressNarrative = `특히 이번 달 '${themes}' 활동에서 재료를 다루는 손끝의 조절력과 형태를 구성하는 관찰력이 크게 향상되었습니다.`;
-    } else {
-      progressNarrative = `수업 중 교사의 설명에 귀를 기울이며 표현하고자 하는 바를 끝까지 차분하게 완성해 내는 태도가 돋보였습니다.`;
-    }
-
-    // 3. 향후 지도 방향 합성
-    let guidanceText = '';
-    if (allGuidance.length > 0) {
-      guidanceText = allGuidance[0];
-    } else {
-      guidanceText = `앞으로도 아이의 독창적인 생각과 색채 감각이 한층 풍부해질 수 있도록 세심하게 지도하겠습니다.`;
-    }
-
-    // 종합 서술문 리포트 (자연스러운 200~300자 본문 구조)
     const reportBody = `${student.name}이는 ${strengthsText} ${progressNarrative} ${guidanceText}`;
 
     const finalReport = `🌿 [그림나무창의미술 ${monthNum}월 성장 리포트 - ${student.name} 어린이]
@@ -1329,8 +1298,8 @@ ${reportBody}
 
   function renderAdminClasses() {
     const list = document.getElementById('adminClassList');
-    list.innerHTML = db.classes.map(c => {
-      const studentCount = db.students.filter(s => s.classId === c.id).length;
+    list.innerHTML = (db.classes || []).map(c => {
+      const studentCount = (db.students || []).filter(s => s.classId === c.id).length;
       return `
         <div class="record-card" style="display:flex; justify-content:space-between; align-items:center;">
           <div>
@@ -1350,7 +1319,7 @@ ${reportBody}
     const q = (document.getElementById('searchAdminStudent')?.value || '').toLowerCase();
     const list = document.getElementById('adminStudentList');
 
-    const filtered = db.students.filter(s => {
+    const filtered = (db.students || []).filter(s => {
       const cls = db.classes.find(c => c.id === s.classId);
       const clsName = cls ? cls.name : '';
       return s.name.toLowerCase().includes(q) || clsName.toLowerCase().includes(q) || (s.age && s.age.toLowerCase().includes(q));
@@ -1447,8 +1416,8 @@ ${reportBody}
   function deleteStudent(id) {
     if (!confirm('정말 이 원생을 삭제하시겠습니까? 관련된 성장 메모도 함께 정리됩니다.')) return;
     db.students = db.students.filter(s => s.id !== id);
-    db.growths = db.growths.filter(g => g.studentId !== id);
-    db.counsels = db.counsels.filter(c => c.studentId !== id);
+    db.growths = (db.growths || []).filter(g => g.studentId !== id);
+    db.counsels = (db.counsels || []).filter(c => c.studentId !== id);
     saveDB();
     renderAll();
   }
@@ -1507,7 +1476,7 @@ ${reportBody}
     if (!studentId) return alert('원생을 먼저 선택해주세요.');
 
     if (id) {
-      const g = db.growths.find(item => item.id === id);
+      const g = (db.growths || []).find(item => item.id === id);
       document.getElementById('modalGrowthId').value = g.id;
       document.getElementById('modalGrowthDate').value = g.date;
       document.getElementById('modalGrowthArea').value = g.area;
@@ -1535,10 +1504,11 @@ ${reportBody}
     if (!content) return alert('메모 내용을 입력해주세요.');
 
     if (id) {
-      const idx = db.growths.findIndex(g => g.id === id);
+      const idx = (db.growths || []).findIndex(g => g.id === id);
       if (idx !== -1) db.growths[idx] = { id, studentId, date, area, content, guidance };
     } else {
       const newId = 'g_' + Date.now();
+      if (!db.growths) db.growths = [];
       db.growths.unshift({ id: newId, studentId, date, area, content, guidance });
     }
 
@@ -1549,7 +1519,7 @@ ${reportBody}
 
   function deleteGrowth(id) {
     if (!confirm('이 관찰 메모를 삭제하시겠습니까?')) return;
-    db.growths = db.growths.filter(g => g.id !== id);
+    db.growths = (db.growths || []).filter(g => g.id !== id);
     saveDB();
     renderChartTab();
   }
@@ -1560,7 +1530,7 @@ ${reportBody}
     clsSelect.innerHTML = db.classes.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
 
     if (id) {
-      const j = db.journals.find(item => item.id === id);
+      const j = (db.journals || []).find(item => item.id === id);
       document.getElementById('modalJournalId').value = j.id;
       document.getElementById('modalJournalDate').value = j.date;
       document.getElementById('modalJournalClass').value = j.classId;
@@ -1575,23 +1545,26 @@ ${reportBody}
       document.getElementById('modalJournalTheme').value = '';
       document.getElementById('modalJournalContent').value = '';
       document.getElementById('journalModalTitle').textContent = '새 수업일지 작성';
-      renderJournalStudentCheckboxes();
+      // 신규 작성 시: 빈 체크박스로 렌더링
+      renderJournalStudentCheckboxes([]);
     }
     openModal('journalModal');
   }
 
   function renderJournalStudentCheckboxes(checkedNames = []) {
     const classId = document.getElementById('modalJournalClass').value;
-    const classStudents = db.students.filter(s => s.classId === classId);
+    const classStudents = (db.students || []).filter(s => s.classId === classId);
     const box = document.getElementById('modalJournalStudentCheckboxes');
 
     if (classStudents.length === 0) {
-      box.innerHTML = '<div style="font-size:12px; color:var(--muted); padding:4px;">해당 반에 배정된 원생이 없습니다.</div>';
+      box.innerHTML = '<div style="font-size:12px; color:var(--muted); padding:4px; grid-column:span 2;">해당 반에 배정된 원생이 없습니다.</div>';
       return;
     }
 
+    const safeChecked = Array.isArray(checkedNames) ? checkedNames : [];
+
     box.innerHTML = classStudents.map(s => {
-      const isChecked = checkedNames.length === 0 ? true : checkedNames.includes(s.name);
+      const isChecked = safeChecked.includes(s.name);
       return `
         <label class="checkbox-item">
           <input type="checkbox" value="${s.name}" ${isChecked ? 'checked' : ''}>
@@ -1599,6 +1572,11 @@ ${reportBody}
         </label>
       `;
     }).join('');
+  }
+
+  function toggleAllAttendance(selectAll) {
+    const checkboxes = document.querySelectorAll('#modalJournalStudentCheckboxes input[type="checkbox"]');
+    checkboxes.forEach(cb => { cb.checked = selectAll; });
   }
 
   function saveJournal() {
@@ -1615,10 +1593,11 @@ ${reportBody}
     const studentNames = Array.from(checkboxes).map(cb => cb.value);
 
     if (id) {
-      const idx = db.journals.findIndex(j => j.id === id);
+      const idx = (db.journals || []).findIndex(j => j.id === id);
       if (idx !== -1) db.journals[idx] = { id, date, classId, subject, theme, content, studentNames };
     } else {
       const newId = 'j_' + Date.now();
+      if (!db.journals) db.journals = [];
       db.journals.unshift({ id: newId, date, classId, subject, theme, content, studentNames });
     }
 
@@ -1630,7 +1609,7 @@ ${reportBody}
 
   function deleteJournal(id) {
     if (!confirm('이 수업일지를 삭제하시겠습니까?')) return;
-    db.journals = db.journals.filter(j => j.id !== id);
+    db.journals = (db.journals || []).filter(j => j.id !== id);
     saveDB();
     renderJournalTab();
     renderChartTab();
@@ -1642,7 +1621,7 @@ ${reportBody}
     if (!studentId) return alert('원생을 먼저 선택해주세요.');
 
     if (id) {
-      const c = db.counsels.find(item => item.id === id);
+      const c = (db.counsels || []).find(item => item.id === id);
       document.getElementById('modalCounselId').value = c.id;
       document.getElementById('modalCounselDate').value = c.date;
       document.getElementById('modalCounselMethod').value = c.method;
@@ -1672,10 +1651,11 @@ ${reportBody}
     if (!request) return alert('상담 내용을 입력해주세요.');
 
     if (id) {
-      const idx = db.counsels.findIndex(c => c.id === id);
+      const idx = (db.counsels || []).findIndex(c => c.id === id);
       if (idx !== -1) db.counsels[idx] = { id, studentId, date, method, request, action, status };
     } else {
       const newId = 'cn_' + Date.now();
+      if (!db.counsels) db.counsels = [];
       db.counsels.unshift({ id: newId, studentId, date, method, request, action, status });
     }
 
@@ -1686,7 +1666,7 @@ ${reportBody}
 
   function deleteCounsel(id) {
     if (!confirm('이 상담 기록을 삭제하시겠습니까?')) return;
-    db.counsels = db.counsels.filter(c => c.id !== id);
+    db.counsels = (db.counsels || []).filter(c => c.id !== id);
     saveDB();
     renderChartTab();
   }
